@@ -509,3 +509,5 @@ const Deals = (() => {
     PAYOUT_SCHEDULE
   };
 })();
+
+window.Deals = Deals;
