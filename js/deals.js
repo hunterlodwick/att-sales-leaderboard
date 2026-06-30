@@ -85,6 +85,11 @@ const Deals = (() => {
     let totalPayout = 0;
     let breakdown = [];
 
+    // If deal is cancelled, return $0 for everything to remove from revenue
+    if (deal.status === 'cbi' || deal.status === 'cai') {
+      return { totalPayout: 0, breakdown: [] };
+    }
+
     // Fiber
     if (deal.fiber) {
       const tier = deal.fiberTier || '1gig';
@@ -132,6 +137,11 @@ const Deals = (() => {
 
   // Calculate upfront and residual for a deal
   function calcPayoutSplit(deal) {
+    // If deal is cancelled, upfront and residuals are 0
+    if (deal.status === 'cbi' || deal.status === 'cai') {
+      return { upfront: 0, residuals: [] };
+    }
+
     const { totalPayout } = calcDealPayout(deal);
     let upfront = 0;
     let residuals = []; // { product, amount, dueDate, months }
@@ -211,7 +221,8 @@ const Deals = (() => {
       adtPackage: dealData.adtPackage || '',
       adtAmount: parseFloat(dealData.adtAmount) || 0,
       fiberResidualPaid: false,
-      dtvResidualPaid: false
+      dtvResidualPaid: false,
+      status: dealData.status || 'active'
     };
     deals.unshift(deal); // newest first
     saveAll(deals);
@@ -248,6 +259,10 @@ const Deals = (() => {
     const deal = getById(id);
     if (!deal) return;
     return updateDeal(id, { installed: !deal.installed });
+  }
+
+  function markStatus(id, status) {
+    return updateDeal(id, { status });
   }
 
   function toggleResidualPaid(id, product) {
@@ -476,6 +491,7 @@ const Deals = (() => {
     updateDeal,
     deleteDeal,
     toggleInstalled,
+    markStatus,
     toggleResidualPaid,
     calcDealPayout,
     calcPayoutSplit,

@@ -353,9 +353,16 @@ const DealsList = (() => {
       const types = Dashboard.getProductTypes(deal);
 
       const badges = types.map(t => `<span class="badge badge--${t}">${t}</span>`).join('');
-      const statusBadge = deal.installed
-        ? `<span class="badge badge--installed">${Icons.installed} Installed</span>`
-        : `<span class="badge badge--pending">${Icons.pending} Pending</span>`;
+      let statusBadge = '';
+      if (deal.status === 'cbi') {
+        statusBadge = `<span class="badge badge--cancelled">${Icons.xCircle} Cancelled Before Install</span>`;
+      } else if (deal.status === 'cai') {
+        statusBadge = `<span class="badge badge--cancelled">${Icons.xCircle} Cancelled After Install</span>`;
+      } else if (deal.installed) {
+        statusBadge = `<span class="badge badge--installed">${Icons.installed} Installed</span>`;
+      } else {
+        statusBadge = `<span class="badge badge--pending">${Icons.pending} Pending</span>`;
+      }
 
       // Show sale date as primary, install date secondary
       const saleDateStr = deal.saleDate
@@ -433,6 +440,21 @@ const DealsList = (() => {
                       onclick="event.stopPropagation(); window.DealsList.toggleInstall('${deal.id}')">
                 ${deal.installed ? Icons.pending + ' Mark Pending' : Icons.installed + ' Mark Installed'}
               </button>
+              ${deal.status === 'active' ? `
+                <button class="deal-card__action-btn deal-card__action-btn--cancel"
+                        onclick="event.stopPropagation(); window.DealsList.markStatus('${deal.id}', 'cbi')">
+                  ${Icons.xCircle} Cancel Before Install
+                </button>
+                <button class="deal-card__action-btn deal-card__action-btn--cancel"
+                        onclick="event.stopPropagation(); window.DealsList.markStatus('${deal.id}', 'cai')">
+                  ${Icons.xCircle} Cancel After Install
+                </button>
+              ` : `
+                <button class="deal-card__action-btn deal-card__action-btn--restore"
+                        onclick="event.stopPropagation(); window.DealsList.markStatus('${deal.id}', 'active')">
+                  ${Icons.refreshCw} Restore Active
+                </button>
+              `}
               <button class="deal-card__action-btn deal-card__action-btn--delete"
                       onclick="event.stopPropagation(); window.App.confirmDelete('${deal.id}', '${Dashboard.escapeHtml(deal.name)}')">
                 ${Icons.trash} Delete
@@ -458,7 +480,13 @@ const DealsList = (() => {
     App.showToast('Deal updated');
   }
 
-  return { setFilter, filter, render, toggleDetails, toggleInstall };
+  function markStatus(dealId, status) {
+    Deals.markStatus(dealId, status);
+    App.refreshAll();
+    App.showToast(status === 'active' ? 'Deal restored to active' : 'Deal marked as cancelled');
+  }
+
+  return { setFilter, filter, render, toggleDetails, toggleInstall, markStatus };
 })();
 
 window.DealsList = DealsList;
@@ -868,10 +896,11 @@ const App = (() => {
     });
 
     // Refresh the tab we're switching to
-    if (tabName === 'dashboard') Dashboard.render();
-    else if (tabName === 'deals') DealsList.render();
-    else if (tabName === 'payouts') Payouts.render();
-    else if (tabName === 'timeline') Timeline.render();
+    if (window.DealsList && tabName === 'deals') DealsList.render();
+    if (window.Timeline && tabName === 'timeline') Timeline.render();
+    if (window.Payouts && tabName === 'payouts') Payouts.render();
+    if (window.Attrition && tabName === 'attrition') Attrition.render();
+    else if (tabName === 'dashboard') Dashboard.render();
   }
 
   function setMode(mode) {
@@ -885,6 +914,7 @@ const App = (() => {
     Dashboard.render();
     DealsList.render();
     Payouts.render();
+    if (window.Attrition) Attrition.render();
     // Only render timeline if its tab is active
     if (document.getElementById('tab-timeline')?.classList.contains('active')) {
       Timeline.render();

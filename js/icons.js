@@ -41,6 +41,8 @@ const Icons = (() => {
     arrowRight: i('chevron-right', '', 20),
     lightning:  i('zap'),
     manual:     i('clipboard-list'),
+    xCircle:    i('x-circle'),
+    refreshCw:  i('refresh-cw'),
     list:       i('list'),
     warning:    i('triangle-alert'),
     user:       i('user'),
