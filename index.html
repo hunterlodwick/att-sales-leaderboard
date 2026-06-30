@@ -38,17 +38,17 @@
       <section class="tab-content active" id="tab-dashboard">
         <h2 class="section-title">Earnings Overview</h2>
         <div class="stats-grid">
-          <div class="stat-card stat-card--today" onclick="window.App.switchTab('timeline'); window.Timeline.setView('day'); window.Timeline.goToday()">
+          <div class="stat-card stat-card--today" onclick="window.App.switchTab('calendar'); window.CalendarTab.setViewMode('sales')">
             <div class="stat-card__label">Today</div>
             <div class="stat-card__value" id="statToday">$0</div>
             <div class="stat-card__count" id="statTodayCount">0 deals</div>
           </div>
-          <div class="stat-card stat-card--week" onclick="window.App.switchTab('timeline'); window.Timeline.setView('week'); window.Timeline.goToday()">
+          <div class="stat-card stat-card--week" onclick="window.App.switchTab('calendar'); window.CalendarTab.setViewMode('sales')">
             <div class="stat-card__label">This Week</div>
             <div class="stat-card__value" id="statWeek">$0</div>
             <div class="stat-card__count" id="statWeekCount">0 deals</div>
           </div>
-          <div class="stat-card stat-card--month" onclick="window.App.switchTab('timeline'); window.Timeline.setView('month'); window.Timeline.goToday()">
+          <div class="stat-card stat-card--month" onclick="window.App.switchTab('calendar'); window.CalendarTab.setViewMode('sales')">
             <div class="stat-card__label">This Month</div>
             <div class="stat-card__value" id="statMonth">$0</div>
             <div class="stat-card__count" id="statMonthCount">0 deals</div>
@@ -319,19 +319,6 @@
         </div>
       </section>
 
-      <!-- ===== TAB 4: TIMELINE ===== -->
-      <section class="tab-content" id="tab-timeline">
-        <div class="filter-pills mb-lg" id="timelineViewPills">
-          <button class="filter-pill active" data-tview="day" onclick="window.Timeline.setView('day')">Day</button>
-          <button class="filter-pill" data-tview="week" onclick="window.Timeline.setView('week')">Week</button>
-          <button class="filter-pill" data-tview="month" onclick="window.Timeline.setView('month')">Month</button>
-          <button class="filter-pill" onclick="window.Timeline.goToday()" style="margin-left:auto;">Today</button>
-        </div>
-
-        <div id="timelineHeader"></div>
-        <div id="timelineStats"></div>
-        <div id="timelineDeals"></div>
-      </section>
 
       <!-- ===== TAB 5: PAYOUTS ===== -->
       <section class="tab-content" id="tab-payouts">
@@ -352,11 +339,11 @@
             <div class="payout-summary__sub" id="payResidualsStatus">0 upcoming</div>
           </div>
         </div>
-        <!-- Filter Bar -->
-        <div class="filter-bar">
-          <button class="filter-bar__btn active" data-pview="upcoming" onclick="window.Payouts.setView('upcoming')">Upcoming</button>
-          <button class="filter-bar__btn" data-pview="residuals" onclick="window.Payouts.setView('residuals')">Residuals</button>
-          <button class="filter-bar__btn" data-pview="all" onclick="window.Payouts.setView('all')">All History</button>
+        <!-- Filter Pills -->
+        <div class="filter-pills mb-lg">
+          <button class="filter-pill active" data-pview="upcoming" onclick="window.Payouts.setView('upcoming')">Upcoming</button>
+          <button class="filter-pill" data-pview="residuals" onclick="window.Payouts.setView('residuals')">Residuals</button>
+          <button class="filter-pill" data-pview="all" onclick="window.Payouts.setView('all')">All History</button>
         </div>
         <div id="payoutsList"></div>
         <div class="empty-state" id="payoutsEmptyState" style="display:none;">
@@ -424,10 +411,7 @@
         <i data-lucide="file-text" style="width:20px;height:20px;"></i>
         <span class="tab-bar__label">Deals</span>
       </button>
-      <button class="tab-bar__btn" data-tab="timeline" onclick="window.App.switchTab('timeline')">
-        <i data-lucide="calendar-days" style="width:20px;height:20px;"></i>
-        <span class="tab-bar__label">Timeline</span>
-      </button>
+
       <button class="tab-bar__btn" data-tab="attrition" onclick="window.App.switchTab('attrition')">
         <i data-lucide="trending-down" style="width:20px;height:20px;"></i>
         <span class="tab-bar__label">Attrition</span>

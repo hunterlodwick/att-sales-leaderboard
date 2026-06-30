@@ -1,8 +1,15 @@
 window.CalendarTab = (() => {
   let currentDate = new Date();
   let selectedDate = null; // YYYY-MM-DD
+  let viewMode = 'installs'; // 'installs' | 'sales'
 
   function init() {
+    render();
+  }
+
+  function setViewMode(mode) {
+    viewMode = mode;
+    selectedDate = null;
     render();
   }
 
@@ -16,34 +23,49 @@ window.CalendarTab = (() => {
 
     // Header nav
     const headerHtml = `
+      <div class="filter-pills mb-lg" style="margin-bottom: var(--space-lg); margin-top: 10px;">
+        <button class="filter-pill ${viewMode === 'installs' ? 'active' : ''}" onclick="window.CalendarTab.setViewMode('installs')">Installs & Follow-ups</button>
+        <button class="filter-pill ${viewMode === 'sales' ? 'active' : ''}" onclick="window.CalendarTab.setViewMode('sales')">Sales</button>
+      </div>
+
       <div class="timeline-header">
         <button class="icon-btn" onclick="window.CalendarTab.prevMonth()">
-          ${Icons.arrowLeft}
+          ${window.Icons.arrowLeft}
         </button>
         <div class="timeline-header__title">
           ${monthName}
-          <div class="timeline-header__sub">Installs & Follow-ups</div>
+          <div class="timeline-header__sub">${viewMode === 'installs' ? 'Pending Installs & Alerts' : 'Sales History'}</div>
         </div>
         <button class="icon-btn" onclick="window.CalendarTab.nextMonth()">
-          ${Icons.arrowRight}
+          ${window.Icons.arrowRight}
         </button>
       </div>
     `;
 
     // Map out the days
     const allDeals = window.Deals.getAll();
-    const dayMap = {}; // { 'YYYY-MM-DD': { installs: [], followUps: [] } }
+    const dayMap = {}; // { 'YYYY-MM-DD': { installs: [], followUps: [], sales: [], salesTotal: 0 } }
 
     allDeals.forEach(deal => {
-      // Pending installs
-      if (!deal.installed && deal.installDate) {
-        if (!dayMap[deal.installDate]) dayMap[deal.installDate] = { installs: [], followUps: [] };
-        dayMap[deal.installDate].installs.push(deal);
-      }
-      // Follow-ups
-      if (deal.followUpDate) {
-        if (!dayMap[deal.followUpDate]) dayMap[deal.followUpDate] = { installs: [], followUps: [] };
-        dayMap[deal.followUpDate].followUps.push(deal);
+      // Installs & follow ups
+      if (viewMode === 'installs') {
+        if (!deal.installed && deal.installDate) {
+          if (!dayMap[deal.installDate]) dayMap[deal.installDate] = { installs: [], followUps: [] };
+          dayMap[deal.installDate].installs.push(deal);
+        }
+        if (deal.followUpDate) {
+          if (!dayMap[deal.followUpDate]) dayMap[deal.followUpDate] = { installs: [], followUps: [] };
+          dayMap[deal.followUpDate].followUps.push(deal);
+        }
+      } else {
+        // Sales
+        const sd = deal.saleDate || (deal.createdAt ? deal.createdAt.split('T')[0] : '');
+        if (sd) {
+          if (!dayMap[sd]) dayMap[sd] = { sales: [], salesTotal: 0 };
+          const { totalPayout: tp } = window.Deals.calcDealPayout(deal);
+          dayMap[sd].sales.push(deal);
+          dayMap[sd].salesTotal += tp;
+        }
       }
     });
 
@@ -67,37 +89,51 @@ window.CalendarTab = (() => {
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(year, month, day);
       const ds = d.toISOString().split('T')[0];
-      const data = dayMap[ds] || { installs: [], followUps: [] };
+      const data = dayMap[ds] || { installs: [], followUps: [], sales: [], salesTotal: 0 };
 
       const isToday = ds === todayStr;
       const isSelected = ds === selectedDate;
-      const hasEvents = (data.installs.length + data.followUps.length) > 0;
+      
+      let hasEvents = false;
+      if (viewMode === 'installs') {
+        hasEvents = (data.installs?.length || 0) + (data.followUps?.length || 0) > 0;
+      } else {
+        hasEvents = (data.sales?.length || 0) > 0;
+      }
       
       let classes = 'month-calendar__cell';
       if (isToday) classes += ' month-calendar__cell--today';
       if (isSelected) classes += ' month-calendar__cell--active';
       if (hasEvents) classes += ' month-calendar__cell--has-deals';
-      if (data.followUps.length > 0) classes += ' month-calendar__cell--has-alerts';
+      if (viewMode === 'installs' && data.followUps?.length > 0) classes += ' month-calendar__cell--has-alerts';
 
       let dotsHtml = '';
-      data.installs.forEach(() => {
-        dotsHtml += '<span class="month-calendar__dot month-calendar__dot--install"></span>';
-      });
-      data.followUps.forEach(() => {
-        dotsHtml += '<span class="month-calendar__dot month-calendar__dot--alert"></span>';
-      });
+      
+      if (viewMode === 'installs') {
+        const installsCount = data.installs?.length || 0;
+        const followUpsCount = data.followUps?.length || 0;
+        for(let i=0; i<installsCount; i++) dotsHtml += '<span class="month-calendar__dot month-calendar__dot--install"></span>';
+        for(let i=0; i<followUpsCount; i++) dotsHtml += '<span class="month-calendar__dot month-calendar__dot--alert"></span>';
 
-      // Limit to 4 dots visibly to not overflow too bad
-      const maxDots = 4;
-      const totalDots = data.installs.length + data.followUps.length;
-      if (totalDots > maxDots) {
-        // Just show 3 and a plus
-        dotsHtml = `
-          <span class="month-calendar__dot month-calendar__dot--install"></span>
-          <span class="month-calendar__dot month-calendar__dot--install"></span>
-          <span class="month-calendar__dot month-calendar__dot--alert"></span>
-          <span class="month-calendar__dot month-calendar__dot--more" style="color:var(--text-muted);">+</span>
-        `;
+        const maxDots = 4;
+        const totalDots = installsCount + followUpsCount;
+        if (totalDots > maxDots) {
+          dotsHtml = `
+            <span class="month-calendar__dot month-calendar__dot--install"></span>
+            <span class="month-calendar__dot month-calendar__dot--install"></span>
+            <span class="month-calendar__dot month-calendar__dot--alert"></span>
+            <span class="month-calendar__dot month-calendar__dot--more" style="color:var(--text-muted);">+</span>
+          `;
+        }
+      } else {
+        // Sales dots + money
+        const salesCount = data.sales?.length || 0;
+        if (salesCount > 0) {
+          const shownDots = Math.min(salesCount, 3);
+          for(let i=0; i<shownDots; i++) dotsHtml += '<span class="month-calendar__dot"></span>';
+          if (salesCount > 3) dotsHtml += '<span class="month-calendar__dot month-calendar__dot--more">+</span>';
+          dotsHtml += `<div class="month-calendar__amount">$${Math.round(data.salesTotal).toLocaleString()}</div>`;
+        }
       }
 
       gridHtml += `
@@ -115,37 +151,73 @@ window.CalendarTab = (() => {
     if (selectedDate) {
       const sDate = new Date(selectedDate + 'T12:00:00');
       const drillLabel = sDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-      const data = dayMap[selectedDate] || { installs: [], followUps: [] };
+      const data = dayMap[selectedDate] || { installs: [], followUps: [], sales: [], salesTotal: 0 };
       
       let listContent = '';
-      if (data.installs.length === 0 && data.followUps.length === 0) {
-        listContent = '<div style="text-align:center;color:var(--text-muted);margin-top:20px;">No installs or follow-ups</div>';
-      } else {
-        const allDayDeals = [...data.installs, ...data.followUps];
-        const uniqueDeals = Array.from(new Set(allDayDeals.map(d => d.id)))
-                                .map(id => allDayDeals.find(d => d.id === id));
-                                
-        listContent = uniqueDeals.map(deal => {
-          const isInstall = deal.installDate === selectedDate && !deal.installed;
-          const isAlert = deal.followUpDate === selectedDate;
-          
-          let statusLabel = '';
-          if (isInstall) statusLabel += `<span class="badge badge--pending" style="margin-right:5px;">${Icons.pending} Pending Install</span>`;
-          if (isAlert) statusLabel += `<span class="badge badge--cancelled" style="background:rgba(245,130,32,0.1);color:var(--att-orange); border: 1px solid rgba(245,130,32,0.2);">${Icons.warning} Follow-up Alert</span>`;
-          
-          return `
-            <div class="deal-card" onclick="window.App.switchTab('dashboard'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
-              <div class="deal-card__header">
-                <div class="deal-card__name">${window.Dashboard.escapeHtml(deal.name)}</div>
-              </div>
-              <div class="deal-card__meta" style="margin-top:10px;">
-                <div class="deal-card__badges">
-                  ${statusLabel}
+      
+      if (viewMode === 'installs') {
+        if (data.installs.length === 0 && data.followUps.length === 0) {
+          listContent = '<div style="text-align:center;color:var(--text-muted);margin-top:20px;">No installs or follow-ups</div>';
+        } else {
+          const allDayDeals = [...data.installs, ...data.followUps];
+          const uniqueDeals = Array.from(new Set(allDayDeals.map(d => d.id)))
+                                  .map(id => allDayDeals.find(d => d.id === id));
+                                  
+          listContent = uniqueDeals.map(deal => {
+            const isInstall = deal.installDate === selectedDate && !deal.installed;
+            const isAlert = deal.followUpDate === selectedDate;
+            
+            let statusLabel = '';
+            if (isInstall) statusLabel += `<span class="badge badge--pending" style="margin-right:5px;">${window.Icons.pending} Pending Install</span>`;
+            if (isAlert) statusLabel += `<span class="badge badge--cancelled" style="background:rgba(245,130,32,0.1);color:var(--att-orange); border: 1px solid rgba(245,130,32,0.2);">${window.Icons.warning} Follow-up Alert</span>`;
+            
+            return `
+              <div class="deal-card" onclick="window.App.switchTab('dashboard'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
+                <div class="deal-card__header">
+                  <div class="deal-card__name">${window.Dashboard.escapeHtml(deal.name)}</div>
+                </div>
+                <div class="deal-card__meta" style="margin-top:10px;">
+                  <div class="deal-card__badges">
+                    ${statusLabel}
+                  </div>
                 </div>
               </div>
+            `;
+          }).join('');
+        }
+      } else {
+        // Sales view
+        if (data.sales.length === 0) {
+          listContent = '<div style="text-align:center;color:var(--text-muted);margin-top:20px;">No sales recorded</div>';
+        } else {
+          listContent = data.sales.map(deal => {
+            const { totalPayout } = window.Deals.calcDealPayout(deal);
+            let productIcon = window.Icons.fiber;
+            if (deal.product === 'Wireless') productIcon = window.Icons.wireless;
+            if (deal.product === 'DIRECTV') productIcon = window.Icons.directv;
+            
+            return `
+              <div class="deal-card" onclick="window.App.switchTab('dashboard'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
+                <div class="deal-card__header">
+                  <div class="deal-card__name">${window.Dashboard.escapeHtml(deal.name)}</div>
+                  <div class="deal-card__price">$${Math.round(totalPayout)}</div>
+                </div>
+                <div class="deal-card__meta" style="margin-top:10px;">
+                  <span class="badge badge--primary">${productIcon} ${deal.product}</span>
+                  ${deal.adtPackage ? `<span class="badge badge--secondary" style="margin-left:5px;">${window.Icons.adt} ADT</span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+          
+          listContent = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:600;">
+              <span>Total Revenue:</span>
+              <span style="color:var(--att-blue);">$${Math.round(data.salesTotal).toLocaleString()}</span>
             </div>
+            ${listContent}
           `;
-        }).join('');
+        }
       }
 
       drillHtml = `
@@ -181,5 +253,5 @@ window.CalendarTab = (() => {
     render();
   }
 
-  return { init, render, prevMonth, nextMonth, selectDate };
+  return { init, render, prevMonth, nextMonth, selectDate, setViewMode };
 })();
