@@ -43,6 +43,8 @@ const Icons = (() => {
     manual:     i('clipboard-list'),
     xCircle:    i('x-circle'),
     refreshCw:  i('refresh-cw'),
+    phone:      i('phone', '', 14),
+    messageCircle: i('message-circle', '', 14),
     list:       i('list'),
     warning:    i('triangle-alert'),
     user:       i('user'),

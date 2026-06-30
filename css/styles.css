@@ -209,10 +209,17 @@ input, select, textarea, button {
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: flex-start;
   z-index: 100;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  padding-left: var(--space-xs);
+  padding-right: var(--space-xs);
+}
+.tab-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-bar__btn {
@@ -220,7 +227,7 @@ input, select, textarea, button {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-sm);
   background: none;
   border: none;
   color: var(--text-muted);
@@ -228,6 +235,8 @@ input, select, textarea, button {
   transition: color var(--transition-fast), transform var(--transition-fast);
   position: relative;
   -webkit-tap-highlight-color: transparent;
+  flex: 0 0 auto;
+  min-width: 65px;
 }
 
 .tab-bar__btn:active {
@@ -2314,4 +2323,68 @@ input, select, textarea, button {
   margin-bottom: var(--space-md);
   padding-bottom: var(--space-sm);
   border-bottom: 2px solid var(--att-light-blue);
+}
+
+/* ============================================================
+   CONTACT ACTIONS & FOLLOW-UP ALERTS
+   ============================================================ */
+.contact-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.btn-contact {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.btn-contact--text {
+  color: var(--att-blue);
+  border-color: rgba(0, 87, 184, 0.3);
+  background: rgba(0, 87, 184, 0.05);
+}
+
+.btn-contact--call {
+  color: var(--green);
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.deal-card__notes {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+  background: rgba(255,255,255,0.03);
+  border-left: 2px solid var(--att-orange);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Calendar Specific Additions */
+.month-calendar__dot--install {
+  background-color: var(--green);
+}
+
+.month-calendar__dot--alert {
+  background-color: var(--att-orange);
+}
+
+.month-calendar__cell--has-alerts {
+  border-color: rgba(245, 130, 32, 0.3) !important;
 }

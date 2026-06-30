@@ -91,8 +91,11 @@ const ManualForm = (() => {
 
     const deal = {
       name,
+      phone: document.getElementById('customerPhone')?.value.trim() || '',
       saleDate: document.getElementById('saleDate').value,
       installDate: document.getElementById('installDate').value,
+      followUpDate: document.getElementById('followUpDate')?.value || '',
+      notes: document.getElementById('customerNotes')?.value.trim() || '',
       installed: document.getElementById('isInstalled').checked,
       fiber: hasFiber,
       fiberTier: document.querySelector('#tab-add input[name="fiberTier"]:checked')?.value || '1gig',
@@ -113,9 +116,15 @@ const ManualForm = (() => {
 
   function resetForm() {
     document.getElementById('customerName').value = '';
+    const phoneInput = document.getElementById('customerPhone');
+    if (phoneInput) phoneInput.value = '';
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('saleDate').value = today;
     document.getElementById('installDate').value = '';
+    const followUpInput = document.getElementById('followUpDate');
+    if (followUpInput) followUpInput.value = '';
+    const notesInput = document.getElementById('customerNotes');
+    if (notesInput) notesInput.value = '';
     document.getElementById('isInstalled').checked = false;
     document.getElementById('chkFiber').checked = false;
     document.getElementById('chkDtv').checked = false;
@@ -416,6 +425,33 @@ const DealsList = (() => {
 
       const dateDisplay = saleDateStr ? `Sold ${saleDateStr}` : (installDateStr ? installDateStr : 'No date set');
 
+      if (deal.notes) {
+        detailRows += `<div class="deal-card__notes">${Dashboard.escapeHtml(deal.notes)}</div>`;
+      }
+
+      let contactActions = '';
+      if (deal.phone) {
+        contactActions = `
+          <div class="contact-actions">
+            <a href="sms:${deal.phone}" class="btn-contact btn-contact--text" onclick="event.stopPropagation();">
+              ${Icons.messageCircle} Text Customer
+            </a>
+            <a href="tel:${deal.phone}" class="btn-contact btn-contact--call" onclick="event.stopPropagation();">
+              ${Icons.phone} Call Customer
+            </a>
+          </div>
+        `;
+      } else if (deal.followUpDate) {
+        const fDate = new Date(deal.followUpDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        contactActions = `
+          <div class="contact-actions">
+            <div style="flex:1;text-align:center;font-size:12px;color:var(--att-orange);padding:10px;">
+              Follow-up Alert: ${fDate}
+            </div>
+          </div>
+        `;
+      }
+
       return `
         <div class="deal-card" onclick="window.DealsList.toggleDetails('${deal.id}')">
           <div class="deal-card__header">
@@ -431,6 +467,7 @@ const DealsList = (() => {
           </div>
           <div class="deal-card__details" id="details-${deal.id}">
             ${detailRows}
+            ${contactActions}
             <div class="deal-card__actions">
               <button class="deal-card__action-btn deal-card__action-btn--edit"
                       onclick="event.stopPropagation(); window.EditModal.open('${deal.id}')">
@@ -874,6 +911,8 @@ const App = (() => {
 
     // Init Firebase (async, non-blocking)
     Deals.initFirebase();
+
+    if (window.CalendarTab) CalendarTab.init();
   }
 
   function updateHeaderDate() {
@@ -900,6 +939,7 @@ const App = (() => {
     if (window.Timeline && tabName === 'timeline') Timeline.render();
     if (window.Payouts && tabName === 'payouts') Payouts.render();
     if (window.Attrition && tabName === 'attrition') Attrition.render();
+    if (window.CalendarTab && tabName === 'calendar') CalendarTab.render();
     else if (tabName === 'dashboard') Dashboard.render();
   }
 
@@ -919,6 +959,7 @@ const App = (() => {
     if (document.getElementById('tab-timeline')?.classList.contains('active')) {
       Timeline.render();
     }
+    if (window.CalendarTab) CalendarTab.render();
     Icons.refresh();
   }
 
