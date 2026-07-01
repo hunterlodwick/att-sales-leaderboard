@@ -192,19 +192,19 @@ window.CalendarTab = (() => {
         } else {
           listContent = data.sales.map(deal => {
             const { totalPayout } = window.Deals.calcDealPayout(deal);
-            let productIcon = window.Icons.fiber;
-            if (deal.product === 'Wireless') productIcon = window.Icons.wireless;
-            if (deal.product === 'DIRECTV') productIcon = window.Icons.directv;
+            const productLabel = window.Dashboard.getProductLabel(deal);
+            const productTypes = window.Dashboard.getProductTypes(deal);
+            const iconMap = { fiber: window.Icons.fiber, directv: window.Icons.directv, wireless: window.Icons.wireless, adt: window.Icons.adt };
+            const primaryIcon = productTypes.length > 0 ? iconMap[productTypes[0]] : window.Icons.fiber;
             
             return `
-              <div class="deal-card" onclick="window.App.switchTab('dashboard'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
+              <div class="deal-card" onclick="window.App.switchTab('deals'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
                 <div class="deal-card__header">
                   <div class="deal-card__name">${window.Dashboard.escapeHtml(deal.name)}</div>
                   <div class="deal-card__price">$${Math.round(totalPayout)}</div>
                 </div>
                 <div class="deal-card__meta" style="margin-top:10px;">
-                  <span class="badge badge--primary">${productIcon} ${deal.product}</span>
-                  ${deal.adtPackage ? `<span class="badge badge--secondary" style="margin-left:5px;">${window.Icons.adt} ADT</span>` : ''}
+                  <span class="badge badge--primary">${primaryIcon} ${productLabel}</span>
                 </div>
               </div>
             `;
