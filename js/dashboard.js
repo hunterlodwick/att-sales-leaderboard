@@ -119,3 +119,5 @@ const Dashboard = (() => {
 
   return { render, formatMoney, formatDate, getProductLabel, getProductTypes, escapeHtml };
 })();
+
+window.Dashboard = Dashboard;

@@ -209,12 +209,10 @@ input, select, textarea, button {
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-around;
   z-index: 100;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  overflow-x: auto;
-  scrollbar-width: none; /* Firefox */
   padding-left: var(--space-xs);
   padding-right: var(--space-xs);
 }
@@ -235,8 +233,8 @@ input, select, textarea, button {
   transition: color var(--transition-fast), transform var(--transition-fast);
   position: relative;
   -webkit-tap-highlight-color: transparent;
-  flex: 0 0 auto;
-  min-width: 65px;
+  flex: 1;
+  min-width: 0;
 }
 
 .tab-bar__btn:active {

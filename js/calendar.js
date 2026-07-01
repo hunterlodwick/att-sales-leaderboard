@@ -28,15 +28,15 @@ window.CalendarTab = (() => {
         <button class="filter-pill ${viewMode === 'sales' ? 'active' : ''}" onclick="window.CalendarTab.setViewMode('sales')">Sales</button>
       </div>
 
-      <div class="timeline-header">
-        <button class="icon-btn" onclick="window.CalendarTab.prevMonth()">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 var(--space-md); margin-bottom: var(--space-lg);">
+        <button onclick="window.CalendarTab.prevMonth()" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle); border-radius:var(--radius-md); width:40px; height:40px; display:flex; align-items:center; justify-content:center; color:var(--text-primary); cursor:pointer; transition: background 0.2s;">
           ${window.Icons.arrowLeft}
         </button>
-        <div class="timeline-header__title">
-          ${monthName}
-          <div class="timeline-header__sub">${viewMode === 'installs' ? 'Pending Installs & Alerts' : 'Sales History'}</div>
+        <div style="text-align:center;">
+          <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${monthName}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${viewMode === 'installs' ? 'Pending Installs & Alerts' : 'Sales History'}</div>
         </div>
-        <button class="icon-btn" onclick="window.CalendarTab.nextMonth()">
+        <button onclick="window.CalendarTab.nextMonth()" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle); border-radius:var(--radius-md); width:40px; height:40px; display:flex; align-items:center; justify-content:center; color:var(--text-primary); cursor:pointer; transition: background 0.2s;">
           ${window.Icons.arrowRight}
         </button>
       </div>
