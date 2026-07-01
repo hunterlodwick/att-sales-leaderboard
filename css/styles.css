@@ -199,22 +199,21 @@ input, select, textarea, button {
 .tab-bar {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: 480px;
   height: calc(var(--tab-bar-height) + var(--safe-area-bottom));
   padding-bottom: var(--safe-area-bottom);
   background: linear-gradient(to top, var(--bg-card) 60%, rgba(17, 29, 51, 0.95));
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: stretch;
   z-index: 100;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  padding-left: var(--space-xs);
-  padding-right: var(--space-xs);
+  padding-left: 0;
+  padding-right: 0;
 }
 .tab-bar::-webkit-scrollbar {
   display: none;
@@ -224,8 +223,9 @@ input, select, textarea, button {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
-  padding: var(--space-sm) var(--space-sm);
+  padding: var(--space-sm) 0;
   background: none;
   border: none;
   color: var(--text-muted);
@@ -233,7 +233,7 @@ input, select, textarea, button {
   transition: color var(--transition-fast), transform var(--transition-fast);
   position: relative;
   -webkit-tap-highlight-color: transparent;
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
 }
 
