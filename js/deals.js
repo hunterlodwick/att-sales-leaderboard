@@ -399,6 +399,76 @@ const Deals = (() => {
     return stats;
   }
 
+  // ---- Personal Records (Best Day/Week/Month) ----
+  function getPersonalRecords() {
+    const deals = getAll();
+    // Group deals by day, week (Sun–Sat), and month
+    const dayMap = {};   // 'YYYY-MM-DD' -> { total, count }
+    const weekMap = {};  // 'YYYY-MM-DD' (Sunday start) -> { total, count, startDate, endDate }
+    const monthMap = {}; // 'YYYY-MM' -> { total, count, year, month }
+
+    deals.forEach(deal => {
+      const { totalPayout } = calcDealPayout(deal);
+      if (totalPayout === 0) return; // skip cancelled
+      const dateStr = deal.saleDate || (deal.createdAt ? deal.createdAt.split('T')[0] : '');
+      if (!dateStr) return;
+
+      const d = new Date(dateStr + 'T12:00:00');
+
+      // Day
+      if (!dayMap[dateStr]) dayMap[dateStr] = { total: 0, count: 0, date: dateStr };
+      dayMap[dateStr].total += totalPayout;
+      dayMap[dateStr].count++;
+
+      // Week (Sunday start)
+      const dayOfWeek = d.getDay();
+      const sunday = new Date(d);
+      sunday.setDate(d.getDate() - dayOfWeek);
+      const sundayStr = sunday.toISOString().split('T')[0];
+      const saturday = new Date(sunday);
+      saturday.setDate(sunday.getDate() + 6);
+      const saturdayStr = saturday.toISOString().split('T')[0];
+      if (!weekMap[sundayStr]) weekMap[sundayStr] = { total: 0, count: 0, startDate: sundayStr, endDate: saturdayStr };
+      weekMap[sundayStr].total += totalPayout;
+      weekMap[sundayStr].count++;
+
+      // Month
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthMap[monthKey]) monthMap[monthKey] = { total: 0, count: 0, year: d.getFullYear(), month: d.getMonth() };
+      monthMap[monthKey].total += totalPayout;
+      monthMap[monthKey].count++;
+    });
+
+    // Find bests
+    let bestDay = { total: 0, count: 0, date: '' };
+    Object.values(dayMap).forEach(d => { if (d.total > bestDay.total) bestDay = d; });
+
+    let bestWeek = { total: 0, count: 0, startDate: '', endDate: '' };
+    Object.values(weekMap).forEach(w => { if (w.total > bestWeek.total) bestWeek = w; });
+
+    let bestMonth = { total: 0, count: 0, year: 0, month: 0 };
+    Object.values(monthMap).forEach(m => { if (m.total > bestMonth.total) bestMonth = m; });
+
+    // Current period values
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentDay = dayMap[todayStr] || { total: 0, count: 0 };
+
+    const currentDow = now.getDay();
+    const currentSunday = new Date(now);
+    currentSunday.setDate(now.getDate() - currentDow);
+    const currentSundayStr = currentSunday.toISOString().split('T')[0];
+    const currentWeek = weekMap[currentSundayStr] || { total: 0, count: 0 };
+
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonth = monthMap[currentMonthKey] || { total: 0, count: 0 };
+
+    return {
+      bestDay, bestWeek, bestMonth,
+      currentDay, currentWeek, currentMonth
+    };
+  }
+
   // ---- Get All Residuals ----
   function getAllResiduals() {
     const deals = getAll();
@@ -497,6 +567,7 @@ const Deals = (() => {
     calcPayoutSplit,
     calcAdtCommission,
     getStats,
+    getPersonalRecords,
     getAllResiduals,
     getNextFriday,
     getInstalledDealsByPayday,

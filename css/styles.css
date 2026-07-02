@@ -2386,3 +2386,430 @@ input, select, textarea, button {
 .month-calendar__cell--has-alerts {
   border-color: rgba(245, 130, 32, 0.3) !important;
 }
+
+/* ============================================================
+   PERSONAL RECORDS — Dashboard Animated Cards
+   ============================================================ */
+.records-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.record-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.record-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.record-card.day::before {
+  background: linear-gradient(90deg, var(--att-blue), var(--att-light-blue));
+}
+
+.record-card.week::before {
+  background: linear-gradient(90deg, #059669, var(--green));
+}
+
+.record-card.month::before {
+  background: linear-gradient(90deg, var(--att-orange), var(--att-gold));
+}
+
+.record-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.record-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.record-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--att-gold);
+  animation: record-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes record-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.record-card__best {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.record-card__sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
+}
+
+.record-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.record-bar__fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  width: 0;
+  animation: record-fill 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: 0.3s;
+}
+
+.record-bar__fill--day {
+  background: linear-gradient(90deg, var(--att-blue), var(--att-light-blue));
+}
+
+.record-bar__fill--week {
+  background: linear-gradient(90deg, #059669, var(--green));
+}
+
+.record-bar__fill--month {
+  background: linear-gradient(90deg, var(--att-orange), var(--att-gold));
+}
+
+@keyframes record-fill {
+  from { width: 0; }
+  to { width: var(--target-width); }
+}
+
+.record-card__progress {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Glow on new record */
+.record-card--glow {
+  animation: record-glow 2s ease-in-out infinite;
+}
+
+.record-card--glow.day {
+  border-color: rgba(58, 165, 220, 0.5);
+  box-shadow: 0 0 20px rgba(58, 165, 220, 0.15);
+}
+
+.record-card--glow.week {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+.record-card--glow.month {
+  border-color: rgba(245, 114, 0, 0.5);
+  box-shadow: 0 0 20px rgba(245, 114, 0, 0.15);
+}
+
+@keyframes record-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.05); }
+  50% { box-shadow: 0 0 24px rgba(58, 165, 220, 0.2); }
+}
+
+/* ============================================================
+   CALENDAR — Count Pills (replaces dots for sales view)
+   ============================================================ */
+.month-calendar__count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.month-calendar__count-pill--low {
+  background: rgba(58, 165, 220, 0.5);
+}
+
+.month-calendar__count-pill--medium {
+  background: rgba(58, 165, 220, 0.7);
+}
+
+.month-calendar__count-pill--high {
+  background: var(--att-light-blue);
+}
+
+.month-calendar__count-pill--hot {
+  background: linear-gradient(135deg, var(--att-blue), var(--att-light-blue));
+  box-shadow: 0 0 6px rgba(58, 165, 220, 0.4);
+}
+
+.month-calendar__compact-amount {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+@media (min-width: 400px) {
+  .month-calendar__count-pill {
+    min-width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+  .month-calendar__compact-amount {
+    font-size: 9px;
+  }
+}
+
+/* ============================================================
+   CALENDAR — Weekly View
+   ============================================================ */
+.month-calendar__week-row {
+  display: contents;
+}
+
+.month-calendar__week-row--clickable .month-calendar__cell {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.month-calendar__week-row--selected .month-calendar__cell {
+  background: rgba(58, 165, 220, 0.08);
+}
+
+.month-calendar__week-row--selected .month-calendar__cell:first-child,
+.month-calendar__week-row--clickable .month-calendar__cell:first-child {
+  position: relative;
+}
+
+.month-calendar__week-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--att-light-blue);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.month-calendar__week-row--selected .month-calendar__week-indicator {
+  opacity: 1;
+}
+
+.month-calendar__week-total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--att-light-blue);
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* Weekly Summary Panel */
+.week-summary {
+  margin-top: var(--space-xl);
+  padding: 0 var(--space-md);
+  padding-bottom: 80px;
+}
+
+.week-summary__header {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-sm);
+  border-bottom: 2px solid var(--att-light-blue);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.week-summary__header-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.week-summary__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.week-summary__stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  text-align: center;
+}
+
+.week-summary__stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.week-summary__stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Product breakdown grid */
+.week-summary__products {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.week-summary__product {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.week-summary__product-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.week-summary__product-icon--fiber { background: rgba(58, 165, 220, 0.15); color: var(--att-light-blue); }
+.week-summary__product-icon--directv { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
+.week-summary__product-icon--wireless { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+.week-summary__product-icon--adt { background: rgba(245, 130, 32, 0.15); color: var(--att-orange); }
+
+.week-summary__product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.week-summary__product-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.week-summary__product-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Mini bar chart */
+.week-summary__chart {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.week-summary__chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+}
+
+.week-summary__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  height: 100px;
+  padding-bottom: 20px;
+  position: relative;
+}
+
+.week-summary__bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.week-summary__bar {
+  width: 100%;
+  max-width: 28px;
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+  background: linear-gradient(180deg, var(--att-light-blue), var(--att-blue));
+  animation: bar-grow 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  transform-origin: bottom;
+  transform: scaleY(0);
+}
+
+@keyframes bar-grow {
+  to { transform: scaleY(1); }
+}
+
+.week-summary__bar-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.week-summary__bar-amount {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+
+/* Week deals list */
+.week-summary__deals-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+}

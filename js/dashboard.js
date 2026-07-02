@@ -66,6 +66,9 @@ const Dashboard = (() => {
     document.getElementById('statYear').textContent = formatMoney(stats.year.total);
     document.getElementById('statYearCount').textContent = `${stats.year.count} deal${stats.year.count !== 1 ? 's' : ''}`;
 
+    // Personal Records
+    renderRecords();
+
     // Product breakdown
     document.getElementById('prodFiber').textContent = formatMoney(stats.fiber.total);
     document.getElementById('prodFiberCount').textContent = `${stats.fiber.count} deal${stats.fiber.count !== 1 ? 's' : ''}`;
@@ -111,13 +114,82 @@ const Dashboard = (() => {
     Icons.refresh();
   }
 
+  function renderRecords() {
+    const container = document.getElementById('personalRecords');
+    if (!container) return;
+
+    const records = Deals.getPersonalRecords();
+    const hasData = records.bestDay.total > 0;
+
+    if (!hasData) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Format dates for display
+    const bestDayLabel = records.bestDay.date
+      ? new Date(records.bestDay.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '—';
+
+    const bestWeekLabel = records.bestWeek.startDate
+      ? new Date(records.bestWeek.startDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        + ' – ' + new Date(records.bestWeek.endDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '—';
+
+    const bestMonthLabel = records.bestMonth.year
+      ? monthNames[records.bestMonth.month] + ' ' + records.bestMonth.year
+      : '—';
+
+    // Progress percentages (current vs best)
+    const dayPct = records.bestDay.total > 0 ? Math.min((records.currentDay.total / records.bestDay.total) * 100, 100) : 0;
+    const weekPct = records.bestWeek.total > 0 ? Math.min((records.currentWeek.total / records.bestWeek.total) * 100, 100) : 0;
+    const monthPct = records.bestMonth.total > 0 ? Math.min((records.currentMonth.total / records.bestMonth.total) * 100, 100) : 0;
+
+    // Check if current IS the record (new record!)
+    const isDayRecord = records.currentDay.total > 0 && records.currentDay.total >= records.bestDay.total;
+    const isWeekRecord = records.currentWeek.total > 0 && records.currentWeek.total >= records.bestWeek.total;
+    const isMonthRecord = records.currentMonth.total > 0 && records.currentMonth.total >= records.bestMonth.total;
+
+    function buildCard(label, bestAmount, bestCount, bestDateLabel, currentAmount, pct, isRecord, accentClass) {
+      const recordBadge = isRecord ? '<span class="record-badge">🔥 NEW RECORD</span>' : '';
+      const glowClass = isRecord ? ' record-card--glow' : '';
+      return `
+        <div class="record-card ${accentClass}${glowClass}">
+          <div class="record-card__header">
+            <div class="record-card__label">${label}${recordBadge}</div>
+            <div class="record-card__best">${formatMoney(bestAmount)}</div>
+          </div>
+          <div class="record-card__sub">${bestDateLabel} · ${bestCount} deal${bestCount !== 1 ? 's' : ''}</div>
+          <div class="record-bar">
+            <div class="record-bar__fill record-bar__fill--${accentClass}" style="--target-width: ${pct}%"></div>
+          </div>
+          <div class="record-card__progress">
+            <span>Today's progress</span>
+            <span>${formatMoney(currentAmount)} / ${formatMoney(bestAmount)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = `
+      <h2 class="section-title">Personal Records</h2>
+      <div class="records-grid">
+        ${buildCard('Best Day', records.bestDay.total, records.bestDay.count, bestDayLabel, records.currentDay.total, dayPct, isDayRecord, 'day')}
+        ${buildCard('Best Week', records.bestWeek.total, records.bestWeek.count, bestWeekLabel, records.currentWeek.total, weekPct, isWeekRecord, 'week')}
+        ${buildCard('Best Month', records.bestMonth.total, records.bestMonth.count, bestMonthLabel, records.currentMonth.total, monthPct, isMonthRecord, 'month')}
+      </div>
+    `;
+  }
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
 
-  return { render, formatMoney, formatDate, getProductLabel, getProductTypes, escapeHtml };
+  return { render, renderRecords, formatMoney, formatDate, getProductLabel, getProductTypes, escapeHtml };
 })();
 
 window.Dashboard = Dashboard;
