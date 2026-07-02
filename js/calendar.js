@@ -12,26 +12,35 @@ window.CalendarTab = (() => {
     viewMode = mode;
     selectedDate = null;
     selectedWeek = null;
+
+    // Auto-select current week when switching to weekly view
+    if (mode === 'weekly') {
+      const now = new Date();
+      const dow = now.getDay();
+      const sunday = new Date(now);
+      sunday.setDate(now.getDate() - dow);
+      selectedWeek = toDateStr(sunday);
+    }
+
     render();
+  }
+
+  // Consistent date string helper (avoids timezone issues with toISOString)
+  function toDateStr(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   // Compact money format: $430, $1.2k, $12.5k
   function formatCompact(amount) {
-    if (amount >= 10000) return '$' + (amount / 1000).toFixed(1) + 'k';
     if (amount >= 1000) return '$' + (amount / 1000).toFixed(1) + 'k';
     return '$' + Math.round(amount);
   }
 
   function formatMoney(amount) {
     return '$' + Math.round(amount).toLocaleString();
-  }
-
-  // Get the intensity class for a count pill
-  function getCountPillClass(count) {
-    if (count >= 7) return 'month-calendar__count-pill--hot';
-    if (count >= 4) return 'month-calendar__count-pill--high';
-    if (count >= 2) return 'month-calendar__count-pill--medium';
-    return 'month-calendar__count-pill--low';
   }
 
   function render() {
@@ -46,7 +55,7 @@ window.CalendarTab = (() => {
     const subtitles = {
       installs: 'Pending Installs & Alerts',
       sales: 'Sales History',
-      weekly: 'Weekly Statistics'
+      weekly: 'Tap a week to view stats'
     };
 
     // Header nav with 3 pills
@@ -73,10 +82,9 @@ window.CalendarTab = (() => {
 
     // Map out the days
     const allDeals = window.Deals.getAll();
-    const dayMap = {}; // { 'YYYY-MM-DD': { installs: [], followUps: [], sales: [], salesTotal: 0 } }
+    const dayMap = {};
 
     allDeals.forEach(deal => {
-      // Installs & follow ups
       if (viewMode === 'installs') {
         if (!deal.installed && deal.installDate) {
           if (!dayMap[deal.installDate]) dayMap[deal.installDate] = { installs: [], followUps: [] };
@@ -87,7 +95,6 @@ window.CalendarTab = (() => {
           dayMap[deal.followUpDate].followUps.push(deal);
         }
       } else {
-        // Sales (both 'sales' and 'weekly' modes need this)
         const sd = deal.saleDate || (deal.createdAt ? deal.createdAt.split('T')[0] : '');
         if (sd) {
           if (!dayMap[sd]) dayMap[sd] = { sales: [], salesTotal: 0 };
@@ -99,10 +106,28 @@ window.CalendarTab = (() => {
     });
 
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDow = firstDay.getDay(); 
-    const daysInMonth = lastDay.getDate();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const startDow = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = toDateStr(new Date());
+
+    // For weekly mode, compute week-level data for row totals
+    const weekTotals = {};
+    if (viewMode === 'weekly') {
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(year, month, day);
+        const ds = toDateStr(d);
+        const dow = d.getDay();
+        const sunday = new Date(d);
+        sunday.setDate(d.getDate() - dow);
+        const sundayStr = toDateStr(sunday);
+        if (!weekTotals[sundayStr]) weekTotals[sundayStr] = { total: 0, count: 0 };
+        const data = dayMap[ds];
+        if (data && data.sales) {
+          weekTotals[sundayStr].total += data.salesTotal;
+          weekTotals[sundayStr].count += data.sales.length;
+        }
+      }
+    }
 
     let gridHtml = '<div class="month-calendar" style="padding: 0 var(--space-md);">';
     gridHtml += '<div class="month-calendar__header">';
@@ -117,46 +142,46 @@ window.CalendarTab = (() => {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(year, month, day);
-      const ds = d.toISOString().split('T')[0];
+      const ds = toDateStr(d);
       const data = dayMap[ds] || { installs: [], followUps: [], sales: [], salesTotal: 0 };
 
       const isToday = ds === todayStr;
       const isSelected = ds === selectedDate;
-      
+
       let hasEvents = false;
       if (viewMode === 'installs') {
         hasEvents = (data.installs?.length || 0) + (data.followUps?.length || 0) > 0;
       } else {
         hasEvents = (data.sales?.length || 0) > 0;
       }
-      
+
       let classes = 'month-calendar__cell';
       if (isToday) classes += ' month-calendar__cell--today';
-      if (isSelected && viewMode !== 'weekly') classes += ' month-calendar__cell--active';
+      if (isSelected && viewMode === 'sales') classes += ' month-calendar__cell--active';
       if (hasEvents) classes += ' month-calendar__cell--has-deals';
       if (viewMode === 'installs' && data.followUps?.length > 0) classes += ' month-calendar__cell--has-alerts';
 
-      // Check if this day is part of the selected week
+      // Weekly mode: highlight selected week row
       if (viewMode === 'weekly' && selectedWeek) {
-        const weekStart = new Date(selectedWeek + 'T12:00:00');
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        if (d >= weekStart && d <= weekEnd) {
-          classes += ' month-calendar__cell--active';
+        const selStart = new Date(selectedWeek + 'T12:00:00');
+        const selEnd = new Date(selStart);
+        selEnd.setDate(selEnd.getDate() + 6);
+        const dayNoon = new Date(year, month, day, 12, 0, 0);
+        if (dayNoon >= selStart && dayNoon <= selEnd) {
+          classes += ' month-calendar__cell--week-selected';
         }
       }
 
       let dotsHtml = '';
-      
+
       if (viewMode === 'installs') {
         const installsCount = data.installs?.length || 0;
         const followUpsCount = data.followUps?.length || 0;
-        for(let i=0; i<installsCount; i++) dotsHtml += '<span class="month-calendar__dot month-calendar__dot--install"></span>';
-        for(let i=0; i<followUpsCount; i++) dotsHtml += '<span class="month-calendar__dot month-calendar__dot--alert"></span>';
+        for (let i = 0; i < installsCount; i++) dotsHtml += '<span class="month-calendar__dot month-calendar__dot--install"></span>';
+        for (let i = 0; i < followUpsCount; i++) dotsHtml += '<span class="month-calendar__dot month-calendar__dot--alert"></span>';
 
-        const maxDots = 4;
         const totalDots = installsCount + followUpsCount;
-        if (totalDots > maxDots) {
+        if (totalDots > 4) {
           dotsHtml = `
             <span class="month-calendar__dot month-calendar__dot--install"></span>
             <span class="month-calendar__dot month-calendar__dot--install"></span>
@@ -164,26 +189,29 @@ window.CalendarTab = (() => {
             <span class="month-calendar__dot month-calendar__dot--more" style="color:var(--text-muted);">+</span>
           `;
         }
-      } else {
-        // Sales view & Weekly view — use count pill instead of dots
+      } else if (viewMode === 'sales') {
+        // Sales view — revenue only, clean and minimal
         const salesCount = data.sales?.length || 0;
         if (salesCount > 0) {
-          const pillClass = getCountPillClass(salesCount);
-          dotsHtml += `<span class="month-calendar__count-pill ${pillClass}">${salesCount}</span>`;
-          dotsHtml += `<div class="month-calendar__compact-amount">${formatCompact(data.salesTotal)}</div>`;
+          dotsHtml = `<div class="month-calendar__revenue">${formatCompact(data.salesTotal)}</div>`;
+        }
+      } else {
+        // Weekly view — just a subtle dot indicator, no clutter
+        const salesCount = data.sales?.length || 0;
+        if (salesCount > 0) {
+          dotsHtml = `<span class="month-calendar__dot" style="background:var(--att-light-blue);"></span>`;
         }
       }
 
-      // Click handler depends on mode
+      // Click handler
       let clickHandler = '';
       if (viewMode === 'weekly') {
-        // Calculate the Sunday of this day's week
-        const dayOfWeek = d.getDay();
+        const dow = d.getDay();
         const sunday = new Date(d);
-        sunday.setDate(d.getDate() - dayOfWeek);
-        const sundayStr = sunday.toISOString().split('T')[0];
+        sunday.setDate(d.getDate() - dow);
+        const sundayStr = toDateStr(sunday);
         clickHandler = `onclick="window.CalendarTab.selectWeek('${sundayStr}')"`;
-      } else {
+      } else if (viewMode === 'installs' || viewMode === 'sales') {
         clickHandler = `onclick="window.CalendarTab.selectDate('${ds}')"`;
       }
 
@@ -197,29 +225,56 @@ window.CalendarTab = (() => {
 
     gridHtml += '</div></div>';
 
+    // Weekly mode: add week-row summary badges outside the grid
+    let weekRowSummaryHtml = '';
+    if (viewMode === 'weekly') {
+      const weekKeys = Object.keys(weekTotals).sort();
+      if (weekKeys.length > 0) {
+        weekRowSummaryHtml = `
+          <div style="padding: var(--space-md); display: flex; flex-wrap: wrap; gap: var(--space-sm);">
+            ${weekKeys.map(wk => {
+              const wkData = weekTotals[wk];
+              const isActive = wk === selectedWeek;
+              const startD = new Date(wk + 'T12:00:00');
+              const endD = new Date(startD);
+              endD.setDate(endD.getDate() + 6);
+              const label = startD.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                + ' – ' + endD.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              return `
+                <button class="week-chip ${isActive ? 'week-chip--active' : ''}" onclick="window.CalendarTab.selectWeek('${wk}')">
+                  <span class="week-chip__label">${label}</span>
+                  <span class="week-chip__value">${wkData.count > 0 ? formatMoney(wkData.total) : '—'}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+    }
+
     // Drill-down panel
     let drillHtml = '';
 
     if (viewMode === 'weekly' && selectedWeek) {
-      drillHtml = renderWeekSummary(selectedWeek, dayMap);
+      drillHtml = renderWeekSummary(selectedWeek);
     } else if (selectedDate && viewMode !== 'weekly') {
       drillHtml = renderDayDrill(selectedDate, dayMap);
     } else {
       drillHtml = `<div style="padding-bottom: 80px;"></div>`;
     }
 
-    root.innerHTML = headerHtml + gridHtml + drillHtml;
+    root.innerHTML = headerHtml + gridHtml + weekRowSummaryHtml + drillHtml;
     window.Icons.refresh();
   }
 
-  // --- Day Drill-Down (existing, refactored) ---
+  // --- Day Drill-Down ---
   function renderDayDrill(dateStr, dayMap) {
     const sDate = new Date(dateStr + 'T12:00:00');
     const drillLabel = sDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     const data = dayMap[dateStr] || { installs: [], followUps: [], sales: [], salesTotal: 0 };
-    
+
     let listContent = '';
-    
+
     if (viewMode === 'installs') {
       if (data.installs.length === 0 && data.followUps.length === 0) {
         listContent = '<div style="text-align:center;color:var(--text-muted);margin-top:20px;">No installs or follow-ups</div>';
@@ -227,15 +282,15 @@ window.CalendarTab = (() => {
         const allDayDeals = [...data.installs, ...data.followUps];
         const uniqueDeals = Array.from(new Set(allDayDeals.map(d => d.id)))
                                 .map(id => allDayDeals.find(d => d.id === id));
-                                
+
         listContent = uniqueDeals.map(deal => {
           const isInstall = deal.installDate === dateStr && !deal.installed;
           const isAlert = deal.followUpDate === dateStr;
-          
+
           let statusLabel = '';
           if (isInstall) statusLabel += `<span class="badge badge--pending" style="margin-right:5px;">${window.Icons.pending} Pending Install</span>`;
           if (isAlert) statusLabel += `<span class="badge badge--cancelled" style="background:rgba(245,130,32,0.1);color:var(--att-orange); border: 1px solid rgba(245,130,32,0.2);">${window.Icons.warning} Follow-up Alert</span>`;
-          
+
           return `
             <div class="deal-card" onclick="window.App.switchTab('dashboard'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
               <div class="deal-card__header">
@@ -261,7 +316,7 @@ window.CalendarTab = (() => {
           const productTypes = window.Dashboard.getProductTypes(deal);
           const iconMap = { fiber: window.Icons.fiber, directv: window.Icons.directv, wireless: window.Icons.wireless, adt: window.Icons.adt };
           const primaryIcon = productTypes.length > 0 ? iconMap[productTypes[0]] : window.Icons.fiber;
-          
+
           return `
             <div class="deal-card" onclick="window.App.switchTab('deals'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
               <div class="deal-card__header">
@@ -274,10 +329,10 @@ window.CalendarTab = (() => {
             </div>
           `;
         }).join('');
-        
+
         listContent = `
           <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-weight:600;">
-            <span>Total Revenue:</span>
+            <span>${data.sales.length} sale${data.sales.length !== 1 ? 's' : ''} · Total Revenue:</span>
             <span style="color:var(--att-blue);">$${Math.round(data.salesTotal).toLocaleString()}</span>
           </div>
           ${listContent}
@@ -294,7 +349,7 @@ window.CalendarTab = (() => {
   }
 
   // --- Weekly Summary Panel ---
-  function renderWeekSummary(weekStartStr, dayMap) {
+  function renderWeekSummary(weekStartStr) {
     const weekStart = new Date(weekStartStr + 'T12:00:00');
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
@@ -304,12 +359,13 @@ window.CalendarTab = (() => {
 
     // Gather all deals for this week
     const weekDeals = window.Deals.getDealsForWeek(weekStartStr);
-    
+
     let totalRevenue = 0;
     let totalDeals = 0;
     const productCounts = { fiber: 0, directv: 0, wireless: 0, adt: 0 };
     const productRevenue = { fiber: 0, directv: 0, wireless: 0, adt: 0 };
     const dayTotals = [0, 0, 0, 0, 0, 0, 0]; // Sun–Sat
+    const dayDealCounts = [0, 0, 0, 0, 0, 0, 0];
     const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     weekDeals.forEach(deal => {
@@ -318,15 +374,14 @@ window.CalendarTab = (() => {
       totalRevenue += totalPayout;
       totalDeals++;
 
-      // Day of week
       const sd = deal.saleDate || (deal.createdAt ? deal.createdAt.split('T')[0] : '');
       if (sd) {
         const d = new Date(sd + 'T12:00:00');
         const dow = d.getDay();
         dayTotals[dow] += totalPayout;
+        dayDealCounts[dow]++;
       }
 
-      // Product breakdown
       if (deal.fiber) {
         productCounts.fiber++;
         const tier = deal.fiberTier || '1gig';
@@ -339,9 +394,8 @@ window.CalendarTab = (() => {
       }
       if (deal.wireless) {
         productCounts.wireless++;
-        const closerAmt = (deal.closerLines || 0) * window.Deals.COMMISSION.wireless.closer;
-        const setterAmt = (deal.setterLines || 0) * window.Deals.COMMISSION.wireless.setter;
-        productRevenue.wireless += closerAmt + setterAmt;
+        productRevenue.wireless += (deal.closerLines || 0) * window.Deals.COMMISSION.wireless.closer
+                                 + (deal.setterLines || 0) * window.Deals.COMMISSION.wireless.setter;
       }
       if (deal.adt) {
         productCounts.adt++;
@@ -352,9 +406,8 @@ window.CalendarTab = (() => {
     });
 
     const avgDeal = totalDeals > 0 ? Math.round(totalRevenue / totalDeals) : 0;
-    const maxDayTotal = Math.max(...dayTotals, 1); // avoid divide by zero
+    const maxDayTotal = Math.max(...dayTotals, 1);
 
-    // Stats cards
     const statsHtml = `
       <div class="week-summary__stats">
         <div class="week-summary__stat">
@@ -362,7 +415,7 @@ window.CalendarTab = (() => {
           <div class="week-summary__stat-label">Total Deals</div>
         </div>
         <div class="week-summary__stat">
-          <div class="week-summary__stat-value">${formatMoney(totalRevenue)}</div>
+          <div class="week-summary__stat-value" style="color:var(--green);">${formatMoney(totalRevenue)}</div>
           <div class="week-summary__stat-label">Revenue</div>
         </div>
         <div class="week-summary__stat">
@@ -372,7 +425,6 @@ window.CalendarTab = (() => {
       </div>
     `;
 
-    // Product breakdown
     const productData = [
       { key: 'fiber', name: 'Fiber', icon: window.Icons.fiber },
       { key: 'directv', name: 'DirecTV', icon: window.Icons.directv },
@@ -380,9 +432,11 @@ window.CalendarTab = (() => {
       { key: 'adt', name: 'ADT', icon: window.Icons.adt }
     ];
 
-    const productsHtml = `
+    // Only show products that have deals
+    const activeProducts = productData.filter(p => productCounts[p.key] > 0);
+    const productsHtml = activeProducts.length > 0 ? `
       <div class="week-summary__products">
-        ${productData.map(p => `
+        ${activeProducts.map(p => `
           <div class="week-summary__product">
             <div class="week-summary__product-icon week-summary__product-icon--${p.key}">
               ${p.icon}
@@ -394,9 +448,8 @@ window.CalendarTab = (() => {
           </div>
         `).join('')}
       </div>
-    `;
+    ` : '';
 
-    // Mini bar chart
     const barsHtml = `
       <div class="week-summary__chart">
         <div class="week-summary__chart-title">Daily Revenue</div>
@@ -404,10 +457,11 @@ window.CalendarTab = (() => {
           ${dayTotals.map((total, i) => {
             const heightPct = maxDayTotal > 0 ? (total / maxDayTotal) * 100 : 0;
             const delay = i * 0.08;
+            const hasDeals = dayDealCounts[i] > 0;
             return `
               <div class="week-summary__bar-col">
-                ${total > 0 ? `<div class="week-summary__bar-amount">${formatCompact(total)}</div>` : ''}
-                <div class="week-summary__bar" style="height: ${Math.max(heightPct, 3)}%; animation-delay: ${delay}s;${total === 0 ? ' background: rgba(255,255,255,0.05);' : ''}"></div>
+                ${hasDeals ? `<div class="week-summary__bar-amount">${formatCompact(total)}</div>` : ''}
+                <div class="week-summary__bar" style="height: ${Math.max(heightPct, 3)}%; animation-delay: ${delay}s;${!hasDeals ? ' background: rgba(255,255,255,0.04);' : ''}"></div>
                 <div class="week-summary__bar-label">${dayLabels[i]}</div>
               </div>
             `;
@@ -416,7 +470,6 @@ window.CalendarTab = (() => {
       </div>
     `;
 
-    // Deal list
     let dealsListHtml = '';
     if (weekDeals.length > 0) {
       dealsListHtml = `<div class="week-summary__deals-title">All Deals This Week</div>`;
@@ -472,20 +525,12 @@ window.CalendarTab = (() => {
   }
 
   function selectDate(dateStr) {
-    if (selectedDate === dateStr) {
-      selectedDate = null; // Toggle off
-    } else {
-      selectedDate = dateStr;
-    }
+    selectedDate = selectedDate === dateStr ? null : dateStr;
     render();
   }
 
   function selectWeek(weekStartStr) {
-    if (selectedWeek === weekStartStr) {
-      selectedWeek = null; // Toggle off
-    } else {
-      selectedWeek = weekStartStr;
-    }
+    selectedWeek = selectedWeek === weekStartStr ? null : weekStartStr;
     render();
   }
 
