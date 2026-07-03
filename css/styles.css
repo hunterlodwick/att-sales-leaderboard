@@ -2899,6 +2899,29 @@ input, select, textarea, button {
 /* ============================================================
    SETTINGS — Commission Rate Editor
    ============================================================ */
+.settings-header {
+  margin-bottom: var(--space-xl);
+  padding-top: var(--space-sm);
+}
+
+.settings-header__title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-sm) 0;
+  line-height: 1.2;
+}
+
+.settings-header__desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.settings-header__desc strong {
+  color: var(--text-secondary);
+}
 .settings-group {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
