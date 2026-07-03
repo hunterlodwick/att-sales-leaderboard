@@ -2895,3 +2895,171 @@ input, select, textarea, button {
   color: var(--text-primary);
   line-height: 1;
 }
+
+/* ============================================================
+   SETTINGS — Commission Rate Editor
+   ============================================================ */
+.settings-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+  overflow: hidden;
+}
+
+.settings-group__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-group__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-group__icon--fiber { background: rgba(58, 165, 220, 0.15); color: var(--att-light-blue); }
+.settings-group__icon--directv { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
+.settings-group__icon--wireless { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+.settings-group__icon--adt { background: rgba(245, 130, 32, 0.15); color: var(--att-orange); }
+
+.settings-group__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-group__sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.settings-group__fields {
+  padding: var(--space-md) var(--space-lg);
+}
+
+.settings-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.settings-field:last-child {
+  border-bottom: none;
+}
+
+.settings-field__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.settings-field__input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.settings-field__input-wrap:focus-within {
+  border-color: var(--att-light-blue);
+}
+
+.settings-field__prefix {
+  padding: 6px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.settings-field__input {
+  width: 80px;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+
+.settings-field__input::-webkit-outer-spin-button,
+.settings-field__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.settings-field__default {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: var(--space-sm);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.settings-field__readonly {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 6px 0;
+}
+
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.settings-save-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, var(--att-blue), var(--att-light-blue));
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.settings-save-btn:active {
+  transform: scale(0.98);
+}
+
+.settings-reset-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-reset-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}

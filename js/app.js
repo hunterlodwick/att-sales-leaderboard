@@ -29,21 +29,23 @@ const ManualForm = (() => {
   function updatePayout() {
     let total = 0;
     const parts = [];
+    const rates = Deals.getActiveRates();
 
     // Fiber
     if (document.getElementById('chkFiber').checked) {
       const tier = document.querySelector('#tab-add input[name="fiberTier"]:checked')?.value || '1gig';
-      const tierMap = { '300mbps': 250, '500mbps': 300, '1gig': 430, '5gig': 505 };
+      const tierData = rates.fiber[tier];
       const tierLabels = { '300mbps': '300M', '500mbps': '500M', '1gig': '1G', '5gig': '5G' };
-      const amt = tierMap[tier] || 430;
+      const amt = tierData ? tierData.total : rates.fiber['1gig'].total;
       total += amt;
       parts.push(`Fiber ${tierLabels[tier] || '1G'}: $${amt}`);
     }
 
     // DirecTV
     if (document.getElementById('chkDtv').checked) {
-      total += 375;
-      parts.push('DirecTV: $375');
+      const amt = rates.directv.total;
+      total += amt;
+      parts.push(`DirecTV: $${amt}`);
     }
 
     // Wireless
@@ -224,18 +226,20 @@ const EditModal = (() => {
   function updateEditPayout() {
     let total = 0;
     const parts = [];
+    const rates = Deals.getActiveRates();
 
     if (document.getElementById('editChkFiber').checked) {
       const tier = document.querySelector('input[name="editFiberTier"]:checked')?.value || '1gig';
-      const tierMap = { '300mbps': 250, '500mbps': 300, '1gig': 430, '5gig': 505 };
+      const tierData = rates.fiber[tier];
       const tierLabels = { '300mbps': '300M', '500mbps': '500M', '1gig': '1G', '5gig': '5G' };
-      const amt = tierMap[tier] || 430;
+      const amt = tierData ? tierData.total : rates.fiber['1gig'].total;
       total += amt;
       parts.push(`Fiber ${tierLabels[tier] || '1G'}: $${amt}`);
     }
     if (document.getElementById('editChkDtv').checked) {
-      total += 375;
-      parts.push('DirecTV: $375');
+      const amt = rates.directv.total;
+      total += amt;
+      parts.push(`DirecTV: $${amt}`);
     }
     if (document.getElementById('editChkWireless').checked) {
       const closer = parseInt(document.getElementById('editCloserLines').value) || 0;
@@ -598,6 +602,7 @@ const App = (() => {
     if (window.Attrition) Attrition.render();
 
     if (window.CalendarTab) CalendarTab.render();
+    if (window.SettingsTab) SettingsTab.render();
     Icons.refresh();
   }
 

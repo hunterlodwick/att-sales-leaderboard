@@ -219,7 +219,7 @@
                 </label>
                 <label class="radio-pill">
                   <input type="radio" name="fiberTier" value="1gig" checked onchange="window.ManualForm.updatePayout()">
-                  <span class="radio-pill__text">1 Gig — $430</span>
+                  <span class="radio-pill__text">1 Gig — $405</span>
                 </label>
                 <label class="radio-pill">
                   <input type="radio" name="fiberTier" value="5gig" onchange="window.ManualForm.updatePayout()">
@@ -397,6 +397,16 @@
         </div>
       </section>
 
+      <!-- ===== TAB: SETTINGS ===== -->
+      <section class="tab-page" id="tab-settings">
+        <h2 class="section-title">Commission Settings</h2>
+        <p style="color:var(--text-muted); font-size:13px; margin-bottom:var(--space-lg);">
+          Update your commission rates below. Changes apply to <strong>new deals only</strong> — existing deals keep the rates they were created with.
+        </p>
+
+        <div id="settingsRoot"></div>
+      </section>
+
     </main>
 
     <!-- ===== BOTTOM TAB BAR ===== -->
@@ -425,6 +435,10 @@
       <button class="tab-bar__btn" data-tab="calendar" onclick="window.App.switchTab('calendar')">
         <i data-lucide="calendar" style="width:20px;height:20px;"></i>
         <span class="tab-bar__label">Calendar</span>
+      </button>
+      <button class="tab-bar__btn" data-tab="settings" onclick="window.App.switchTab('settings')">
+        <i data-lucide="settings" style="width:20px;height:20px;"></i>
+        <span class="tab-bar__label">Settings</span>
       </button>
     </nav>
 
@@ -507,7 +521,7 @@
               </label>
               <label class="radio-pill">
                 <input type="radio" name="editFiberTier" value="1gig" checked onchange="window.EditModal.updateEditPayout()">
-                <span class="radio-pill__text">1 Gig — $430</span>
+                <span class="radio-pill__text">1 Gig — $405</span>
               </label>
               <label class="radio-pill">
                 <input type="radio" name="editFiberTier" value="5gig" onchange="window.EditModal.updateEditPayout()">
@@ -593,6 +607,7 @@
   <script src="js/payouts.js"></script>
   <script src="js/attrition.js"></script>
   <script src="js/calendar.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/ai-input.js"></script>
   <script src="js/app.js"></script>
 </body>

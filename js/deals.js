@@ -6,16 +6,17 @@
 const Deals = (() => {
   const STORAGE_KEY = 'att_sales_deals';
   const MIGRATION_KEY = 'att_firebase_migrated';
+  const SETTINGS_KEY = 'att_sales_settings';
 
-  // ---- Commission Constants ----
+  // ---- Default Commission Constants ----
   const COMMISSION = {
     fiber: {
       '300mbps': { base: 220, caBonus: 30, total: 250 },
       '500mbps': { base: 270, caBonus: 30, total: 300 },
-      '1gig':    { base: 400, caBonus: 30, total: 430 },
+      '1gig':    { base: 375, caBonus: 30, total: 405 },
       '5gig':    { base: 475, caBonus: 30, total: 505 }
     },
-    directv: { total: 375 },
+    directv: { total: 350 },
     wireless: {
       closer: 130, // per line
       setter: 65   // per line (half)
@@ -39,6 +40,54 @@ const Deals = (() => {
     directv: { upfrontPct: 0.85, residualPct: 0.15, residualMonths: 6 },
     // wireless and adt: full payout, no residual split
   };
+
+  // ---- User Settings (overrides COMMISSION defaults) ----
+  function getSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function saveSettings(settings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }
+
+  // Returns the active commission rates (user overrides merged over defaults)
+  function getActiveRates() {
+    const s = getSettings();
+    if (!s) return COMMISSION;
+    return {
+      fiber: {
+        '300mbps': { base: s.fiber300 ?? COMMISSION.fiber['300mbps'].base, caBonus: s.fiberBonus ?? COMMISSION.fiber['300mbps'].caBonus, total: (s.fiber300 ?? COMMISSION.fiber['300mbps'].base) + (s.fiberBonus ?? COMMISSION.fiber['300mbps'].caBonus) },
+        '500mbps': { base: s.fiber500 ?? COMMISSION.fiber['500mbps'].base, caBonus: s.fiberBonus ?? COMMISSION.fiber['500mbps'].caBonus, total: (s.fiber500 ?? COMMISSION.fiber['500mbps'].base) + (s.fiberBonus ?? COMMISSION.fiber['500mbps'].caBonus) },
+        '1gig':    { base: s.fiber1g ?? COMMISSION.fiber['1gig'].base,    caBonus: s.fiberBonus ?? COMMISSION.fiber['1gig'].caBonus,    total: (s.fiber1g ?? COMMISSION.fiber['1gig'].base) + (s.fiberBonus ?? COMMISSION.fiber['1gig'].caBonus) },
+        '5gig':    { base: s.fiber5g ?? COMMISSION.fiber['5gig'].base,    caBonus: s.fiberBonus ?? COMMISSION.fiber['5gig'].caBonus,    total: (s.fiber5g ?? COMMISSION.fiber['5gig'].base) + (s.fiberBonus ?? COMMISSION.fiber['5gig'].caBonus) }
+      },
+      directv: { total: s.directv ?? COMMISSION.directv.total },
+      wireless: {
+        closer: s.wirelessCloser ?? COMMISSION.wireless.closer,
+        setter: s.wirelessSetter ?? COMMISSION.wireless.setter
+      },
+      adt: COMMISSION.adt // ADT stays formula-based
+    };
+  }
+
+  // Snapshot current rates for stamping onto new deals
+  function snapshotRates() {
+    const rates = getActiveRates();
+    return {
+      fiber: { ...rates.fiber },
+      directv: { total: rates.directv.total },
+      wireless: { closer: rates.wireless.closer, setter: rates.wireless.setter }
+    };
+  }
+
+  // Get the rates to use for a specific deal (stamped rates or current defaults)
+  function getRatesForDeal(deal) {
+    if (deal.commissionRates) return deal.commissionRates;
+    return getActiveRates();
+  }
 
   // ---- In-memory cache (source of truth, synced to Firestore + localStorage) ----
   let dealsCache = null;
@@ -73,11 +122,12 @@ const Deals = (() => {
   }
 
   // ---- ADT Commission Calculation ----
-  function calcAdtCommission(packageKey) {
-    const pkg = COMMISSION.adt.packages[packageKey];
+  function calcAdtCommission(packageKey, dealRates) {
+    const adt = dealRates?.adt || COMMISSION.adt;
+    const pkg = adt.packages[packageKey];
     if (!pkg) return 0;
-    const contractTotal = COMMISSION.adt.activationFee + (pkg.monthly * COMMISSION.adt.contractMonths);
-    return Math.round(contractTotal * COMMISSION.adt.commissionPct * 100) / 100;
+    const contractTotal = adt.activationFee + (pkg.monthly * adt.contractMonths);
+    return Math.round(contractTotal * adt.commissionPct * 100) / 100;
   }
 
   // ---- Commission Calculation ----
@@ -90,11 +140,15 @@ const Deals = (() => {
       return { totalPayout: 0, breakdown: [] };
     }
 
+    // Get rates: use deal's stamped rates if available, otherwise current active rates
+    const rates = getRatesForDeal(deal);
+
     // Fiber
     if (deal.fiber) {
       const tier = deal.fiberTier || '1gig';
-      const tierData = COMMISSION.fiber[tier];
-      const amt = tierData ? tierData.total : COMMISSION.fiber['1gig'].total;
+      const tierData = rates.fiber[tier];
+      const fallback = rates.fiber['1gig'];
+      const amt = tierData ? tierData.total : fallback.total;
       totalPayout += amt;
       const tierLabels = { '300mbps': '300 Mbps', '500mbps': '500 Mbps', '1gig': '1 Gig', '5gig': '5 Gig' };
       breakdown.push({ product: 'Fiber', detail: tierLabels[tier] || '1 Gig', amount: amt });
@@ -102,15 +156,15 @@ const Deals = (() => {
 
     // DirecTV
     if (deal.directv) {
-      const amt = COMMISSION.directv.total;
+      const amt = rates.directv.total;
       totalPayout += amt;
       breakdown.push({ product: 'DirecTV', detail: '', amount: amt });
     }
 
     // Wireless
     if (deal.wireless) {
-      const closerAmt = (deal.closerLines || 0) * COMMISSION.wireless.closer;
-      const setterAmt = (deal.setterLines || 0) * COMMISSION.wireless.setter;
+      const closerAmt = (deal.closerLines || 0) * rates.wireless.closer;
+      const setterAmt = (deal.setterLines || 0) * rates.wireless.setter;
       const wirelessTotal = closerAmt + setterAmt;
       totalPayout += wirelessTotal;
       if (closerAmt > 0) breakdown.push({ product: 'Wireless (Closer)', detail: `${deal.closerLines} line${deal.closerLines > 1 ? 's' : ''}`, amount: closerAmt });
@@ -121,11 +175,10 @@ const Deals = (() => {
     if (deal.adt) {
       let amt = 0;
       if (deal.adtPackage && COMMISSION.adt.packages[deal.adtPackage]) {
-        amt = calcAdtCommission(deal.adtPackage);
+        amt = calcAdtCommission(deal.adtPackage, rates);
         const pkg = COMMISSION.adt.packages[deal.adtPackage];
         breakdown.push({ product: 'ADT', detail: pkg.label, amount: amt });
       } else if (deal.adtAmount) {
-        // Legacy: manual amount
         amt = deal.adtAmount;
         if (amt > 0) breakdown.push({ product: 'ADT', detail: 'Custom', amount: amt });
       }
@@ -146,11 +199,13 @@ const Deals = (() => {
     let upfront = 0;
     let residuals = []; // { product, amount, dueDate, months }
 
+    const rates = getRatesForDeal(deal);
+
     // Fiber residual
     if (deal.fiber && deal.installed) {
       const tier = deal.fiberTier || '1gig';
-      const tierData = COMMISSION.fiber[tier];
-      const fiberAmt = tierData ? tierData.total : COMMISSION.fiber['1gig'].total;
+      const tierData = rates.fiber[tier];
+      const fiberAmt = tierData ? tierData.total : rates.fiber['1gig'].total;
       const sched = PAYOUT_SCHEDULE.fiber;
       upfront += fiberAmt * sched.upfrontPct;
       const installDate = new Date(deal.installDate);
@@ -167,7 +222,7 @@ const Deals = (() => {
 
     // DirecTV residual
     if (deal.directv && deal.installed) {
-      const dtvAmt = COMMISSION.directv.total;
+      const dtvAmt = rates.directv.total;
       const sched = PAYOUT_SCHEDULE.directv;
       upfront += dtvAmt * sched.upfrontPct;
       const installDate = new Date(deal.installDate);
@@ -184,15 +239,15 @@ const Deals = (() => {
 
     // Wireless — full payout, no residual split
     if (deal.wireless && deal.installed) {
-      const closerAmt = (deal.closerLines || 0) * COMMISSION.wireless.closer;
-      const setterAmt = (deal.setterLines || 0) * COMMISSION.wireless.setter;
+      const closerAmt = (deal.closerLines || 0) * rates.wireless.closer;
+      const setterAmt = (deal.setterLines || 0) * rates.wireless.setter;
       upfront += closerAmt + setterAmt;
     }
 
     // ADT — full payout on install
     if (deal.adt && deal.installed) {
       if (deal.adtPackage && COMMISSION.adt.packages[deal.adtPackage]) {
-        upfront += calcAdtCommission(deal.adtPackage);
+        upfront += calcAdtCommission(deal.adtPackage, rates);
       } else {
         upfront += deal.adtAmount || 0;
       }
@@ -222,7 +277,8 @@ const Deals = (() => {
       adtAmount: parseFloat(dealData.adtAmount) || 0,
       fiberResidualPaid: false,
       dtvResidualPaid: false,
-      status: dealData.status || 'active'
+      status: dealData.status || 'active',
+      commissionRates: snapshotRates() // stamp current rates for non-retroactivity
     };
     deals.unshift(deal); // newest first
     saveAll(deals);
@@ -576,6 +632,9 @@ const Deals = (() => {
     getDealsForWeek,
     getDealsForMonth,
     initFirebase,
+    getSettings,
+    saveSettings,
+    getActiveRates,
     COMMISSION,
     PAYOUT_SCHEDULE
   };
