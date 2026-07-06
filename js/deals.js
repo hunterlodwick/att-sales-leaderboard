@@ -11,8 +11,8 @@ const Deals = (() => {
   // ---- Default Commission Constants ----
   const COMMISSION = {
     fiber: {
-      '300mbps': { base: 220, caBonus: 30, total: 250 },
-      '500mbps': { base: 270, caBonus: 30, total: 300 },
+      '300mbps': { base: 220, caBonus: 0, total: 220 },
+      '500mbps': { base: 270, caBonus: 0, total: 270 },
       '1gig':    { base: 375, caBonus: 30, total: 405 },
       '5gig':    { base: 475, caBonus: 30, total: 505 }
     },
@@ -59,8 +59,8 @@ const Deals = (() => {
     if (!s) return COMMISSION;
     return {
       fiber: {
-        '300mbps': { base: s.fiber300 ?? COMMISSION.fiber['300mbps'].base, caBonus: s.fiberBonus ?? COMMISSION.fiber['300mbps'].caBonus, total: (s.fiber300 ?? COMMISSION.fiber['300mbps'].base) + (s.fiberBonus ?? COMMISSION.fiber['300mbps'].caBonus) },
-        '500mbps': { base: s.fiber500 ?? COMMISSION.fiber['500mbps'].base, caBonus: s.fiberBonus ?? COMMISSION.fiber['500mbps'].caBonus, total: (s.fiber500 ?? COMMISSION.fiber['500mbps'].base) + (s.fiberBonus ?? COMMISSION.fiber['500mbps'].caBonus) },
+        '300mbps': { base: s.fiber300 ?? COMMISSION.fiber['300mbps'].base, caBonus: 0, total: s.fiber300 ?? COMMISSION.fiber['300mbps'].base },
+        '500mbps': { base: s.fiber500 ?? COMMISSION.fiber['500mbps'].base, caBonus: 0, total: s.fiber500 ?? COMMISSION.fiber['500mbps'].base },
         '1gig':    { base: s.fiber1g ?? COMMISSION.fiber['1gig'].base,    caBonus: s.fiberBonus ?? COMMISSION.fiber['1gig'].caBonus,    total: (s.fiber1g ?? COMMISSION.fiber['1gig'].base) + (s.fiberBonus ?? COMMISSION.fiber['1gig'].caBonus) },
         '5gig':    { base: s.fiber5g ?? COMMISSION.fiber['5gig'].base,    caBonus: s.fiberBonus ?? COMMISSION.fiber['5gig'].caBonus,    total: (s.fiber5g ?? COMMISSION.fiber['5gig'].base) + (s.fiberBonus ?? COMMISSION.fiber['5gig'].caBonus) }
       },

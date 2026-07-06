@@ -31,7 +31,7 @@ window.SettingsTab = (() => {
 
         <div class="settings-group__fields">
           <div class="settings-field">
-            <label class="settings-field__label">CA Bonus (all tiers)</label>
+            <label class="settings-field__label">CA Bonus (1G & 5G only)</label>
             <div class="settings-field__input-wrap">
               <span class="settings-field__prefix">$</span>
               <input type="number" class="settings-field__input" id="setFiberBonus" value="${rates.fiber['1gig'].caBonus}" min="0" step="1" />
