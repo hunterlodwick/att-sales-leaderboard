@@ -559,6 +559,12 @@ const App = (() => {
     Deals.initFirebase();
 
     if (window.CalendarTab) CalendarTab.init();
+
+    // Restore last active tab
+    const savedTab = localStorage.getItem('att_active_tab');
+    if (savedTab && document.getElementById(`tab-${savedTab}`)) {
+      switchTab(savedTab);
+    }
   }
 
   function updateHeaderDate() {
@@ -570,6 +576,9 @@ const App = (() => {
   }
 
   function switchTab(tabName) {
+    // Persist active tab
+    localStorage.setItem('att_active_tab', tabName);
+
     // Update tab content
     document.querySelectorAll('.tab-content').forEach(el => {
       el.classList.toggle('active', el.id === `tab-${tabName}`);
