@@ -286,21 +286,42 @@ window.CalendarTab = (() => {
         listContent = uniqueDeals.map(deal => {
           const isInstall = deal.installDate === dateStr && !deal.installed;
           const isAlert = deal.followUpDate === dateStr;
+          const { totalPayout } = window.Deals.calcDealPayout(deal);
+          const productLabel = window.Dashboard.getProductLabel(deal);
 
           let statusLabel = '';
           if (isInstall) statusLabel += `<span class="badge badge--pending" style="margin-right:5px;">${window.Icons.pending} Pending Install</span>`;
-          if (isAlert) statusLabel += `<span class="badge badge--cancelled" style="background:rgba(245,130,32,0.1);color:var(--att-orange); border: 1px solid rgba(245,130,32,0.2);">${window.Icons.warning} Follow-up Alert</span>`;
+          if (isAlert) statusLabel += `<span class="badge badge--cancelled" style="background:rgba(245,130,32,0.1);color:var(--att-orange); border: 1px solid rgba(245,130,32,0.2);">${window.Icons.warning} Follow-up</span>`;
+
+          let actionsHtml = '';
+          if (isInstall) {
+            actionsHtml = `
+              <div style="display:flex; gap:var(--space-sm); margin-top:var(--space-md);">
+                <button class="btn-primary" style="flex:1; padding:8px 12px; font-size:12px; font-weight:600; border:none; border-radius:var(--radius-sm); background:var(--green); color:#fff; cursor:pointer;" onclick="event.stopPropagation(); window.Deals.toggleInstalled('${deal.id}'); window.App.refreshAll(); window.App.showToast('Marked as installed!');">
+                  ✓ Mark Installed
+                </button>
+                <button style="padding:8px 12px; font-size:12px; font-weight:600; border:1px solid var(--border-subtle); border-radius:var(--radius-sm); background:transparent; color:var(--text-secondary); cursor:pointer;" onclick="event.stopPropagation(); window.App.switchTab('deals'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
+                  View Deal
+                </button>
+              </div>
+            `;
+          }
 
           return `
-            <div class="deal-card" onclick="window.App.switchTab('dashboard'); window.setTimeout(() => window.DealsList.toggleDetails('${deal.id}'), 100);">
+            <div class="deal-card">
               <div class="deal-card__header">
                 <div class="deal-card__name">${window.Dashboard.escapeHtml(deal.name)}</div>
+                <div class="deal-card__price">$${Math.round(totalPayout)}</div>
               </div>
-              <div class="deal-card__meta" style="margin-top:10px;">
+              <div class="deal-card__meta" style="margin-top:6px;">
+                <span style="font-size:12px; color:var(--text-muted);">${productLabel}</span>
+              </div>
+              <div class="deal-card__meta" style="margin-top:6px;">
                 <div class="deal-card__badges">
                   ${statusLabel}
                 </div>
               </div>
+              ${actionsHtml}
             </div>
           `;
         }).join('');
