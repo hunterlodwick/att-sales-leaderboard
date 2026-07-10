@@ -12,9 +12,11 @@ import {
 import salesData from '@/data/sales-data.json'
 import type { SaleRecord } from '@/lib/types'
 import {
-  filterByTimeFrame, filterByOffice, filterByRep, aggregateRepStats, getTeamSummary,
-  getTrendData, getOffices, getReps, getMonths, formatNumber, formatPct,
-  parseDate
+  filterByTimeFrame, filterByOffice, filterByRep, filterByMonth, filterByWeek, filterByDate, filterByQuarter,
+  aggregateRepStats, getTeamSummary,
+  getTrendData, getOffices, getReps, getMonths, getQuarters, getWeeks, getDates,
+  getWeeksInMonth, getDatesInWeek,
+  formatNumber, formatPct, parseDate
 } from '@/lib/data'
 
 const records = salesData as SaleRecord[]
@@ -212,34 +214,107 @@ export default function Home() {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('YTD')
   const [office, setOffice] = useState<string>('All')
   const [sortBy, setSortBy] = useState<SortBy>('Total')
+  
+  // Granular drill-down state
+  const [selectedMonth, setSelectedMonth] = useState<string>('All')
+  const [selectedWeek, setSelectedWeek] = useState<string>('All')
+  const [selectedDate, setSelectedDate] = useState<string>('All')
+  const [selectedQuarter, setSelectedQuarter] = useState<string>('All')
 
+  // Reset drill-downs when time frame changes
+  const handleTimeFrameChange = (tf: TimeFrame) => {
+    setTimeFrame(tf)
+    setSelectedMonth('All')
+    setSelectedWeek('All')
+    setSelectedDate('All')
+    setSelectedQuarter('All')
+  }
+
+  // Build filtered dataset with granular filters chained
   const filtered = useMemo(() => {
     let data = filterByTimeFrame(records, timeFrame)
     data = filterByOffice(data, office)
+    if (selectedQuarter !== 'All') data = filterByQuarter(data, selectedQuarter)
+    if (selectedMonth !== 'All') data = filterByMonth(data, selectedMonth)
+    if (selectedWeek !== 'All') data = filterByWeek(data, selectedWeek)
+    if (selectedDate !== 'All') data = filterByDate(data, selectedDate)
     return data
+  }, [timeFrame, office, selectedMonth, selectedWeek, selectedDate, selectedQuarter])
+
+  // Compute what's available for drill-down pickers
+  const baseFiltered = useMemo(() => {
+    let data = filterByTimeFrame(records, timeFrame)
+    return filterByOffice(data, office)
   }, [timeFrame, office])
 
   const offices = useMemo(() => getOffices(records), [])
+  const availableMonths = useMemo(() => getMonths(baseFiltered), [baseFiltered])
+  const availableQuarters = useMemo(() => getQuarters(baseFiltered), [baseFiltered])
+  const availableWeeks = useMemo(() => {
+    const monthData = selectedMonth !== 'All' ? filterByMonth(baseFiltered, selectedMonth) : baseFiltered
+    return getWeeks(monthData)
+  }, [baseFiltered, selectedMonth])
+  const availableDates = useMemo(() => {
+    let data = baseFiltered
+    if (selectedMonth !== 'All') data = filterByMonth(data, selectedMonth)
+    if (selectedWeek !== 'All') data = filterByWeek(data, selectedWeek)
+    return getDates(data)
+  }, [baseFiltered, selectedMonth, selectedWeek])
+
   const summary = useMemo(() => getTeamSummary(filtered), [filtered])
   const repStats = useMemo(() => aggregateRepStats(filtered, sortBy), [filtered, sortBy])
-  const trendData = useMemo(() => getTrendData(filtered, timeFrame === 'Monthly' || timeFrame === 'Quarterly' || timeFrame === 'YTD' || timeFrame === 'All' ? 'month' : 'week'), [filtered, timeFrame])
+  
+  // Determine the best chart grouping based on active granularity
+  const chartGroupBy = useMemo(() => {
+    if (selectedDate !== 'All') return 'day' as const
+    if (selectedWeek !== 'All') return 'day' as const
+    if (selectedMonth !== 'All') return 'day' as const
+    if (timeFrame === 'Daily' || timeFrame === 'Weekly') return 'day' as const
+    return 'month' as const
+  }, [selectedDate, selectedWeek, selectedMonth, timeFrame])
+  
+  const trendData = useMemo(() => getTrendData(filtered, chartGroupBy), [filtered, chartGroupBy])
+
+  // Active filter label for header
+  const activeFilterLabel = useMemo(() => {
+    const parts: string[] = []
+    if (timeFrame !== 'All') parts.push(timeFrame === 'YTD' ? 'YTD' : timeFrame)
+    else parts.push('All Time')
+    if (selectedQuarter !== 'All') parts.push(selectedQuarter)
+    if (selectedMonth !== 'All') parts.push(selectedMonth)
+    if (selectedWeek !== 'All') parts.push(`Wk ${selectedWeek.split(' - ')[0] || selectedWeek}`)
+    if (selectedDate !== 'All') parts.push(selectedDate)
+    return parts.join(' › ')
+  }, [timeFrame, selectedQuarter, selectedMonth, selectedWeek, selectedDate])
+
+  // Common filter props
+  const filterProps = {
+    offices, office, setOffice,
+    timeFrame, setTimeFrame: handleTimeFrameChange,
+    sortBy, setSortBy,
+    selectedMonth, setSelectedMonth,
+    selectedWeek, setSelectedWeek: (w: string) => { setSelectedWeek(w); setSelectedDate('All') },
+    selectedDate, setSelectedDate,
+    selectedQuarter, setSelectedQuarter: (q: string) => { setSelectedQuarter(q); setSelectedMonth('All'); setSelectedWeek('All'); setSelectedDate('All') },
+    availableMonths, availableQuarters, availableWeeks, availableDates,
+  }
 
   return (
     <>
-      <Header timeFrame={timeFrame} office={office} />
+      <Header filterLabel={activeFilterLabel} office={office} />
       
       <main className="content-pb">
         {tab === 'dashboard' && (
-          <DashboardView summary={summary} offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} sortBy={sortBy} setSortBy={setSortBy} repStats={repStats} trendData={trendData} />
+          <DashboardView summary={summary} repStats={repStats} trendData={trendData} filterProps={filterProps} />
         )}
         {tab === 'leaderboard' && (
-          <LeaderboardView summary={summary} offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} sortBy={sortBy} setSortBy={setSortBy} repStats={repStats} />
+          <LeaderboardView summary={summary} repStats={repStats} filterProps={filterProps} />
         )}
         {tab === 'trends' && (
-          <TrendsView offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} trendData={trendData} />
+          <TrendsView trendData={trendData} filterProps={filterProps} />
         )}
         {tab === 'compare' && (
-          <CompareView offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} />
+          <CompareView filterProps={filterProps} />
         )}
       </main>
 
@@ -249,7 +324,7 @@ export default function Home() {
 }
 
 // === HEADER ===
-function Header({ timeFrame, office }: { timeFrame: TimeFrame; office: string }) {
+function Header({ filterLabel, office }: { filterLabel: string; office: string }) {
   return (
     <header className="app-header">
       <div className="flex items-center gap-3">
@@ -260,7 +335,7 @@ function Header({ timeFrame, office }: { timeFrame: TimeFrame; office: string })
           <div className="font-bold text-base leading-tight" style={{ color: 'var(--color-text)' }}>ASP / RIVVIA</div>
           <div className="text-[11px] font-semibold leading-tight flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
             <span className="live-dot" style={{ width: 6, height: 6 }} />
-            {timeFrame === 'All' ? 'All Time' : timeFrame} · {office}
+            {filterLabel} · {office}
           </div>
         </div>
       </div>
@@ -297,36 +372,125 @@ function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   )
 }
 
-// === FILTER BAR ===
-function FilterBar({ offices, office, setOffice, timeFrame, setTimeFrame, sortBy, setSortBy, showSort = true }: {
+// === FILTER BAR (with granular drill-down) ===
+interface FilterProps {
   offices: string[]; office: string; setOffice: (v: string) => void;
   timeFrame: TimeFrame; setTimeFrame: (v: TimeFrame) => void;
-  sortBy: SortBy; setSortBy: (v: SortBy) => void; showSort?: boolean
-}) {
+  sortBy: SortBy; setSortBy: (v: SortBy) => void;
+  selectedMonth: string; setSelectedMonth: (v: string) => void;
+  selectedWeek: string; setSelectedWeek: (v: string) => void;
+  selectedDate: string; setSelectedDate: (v: string) => void;
+  selectedQuarter: string; setSelectedQuarter: (v: string) => void;
+  availableMonths: string[]; availableQuarters: string[]; availableWeeks: string[];
+  availableDates: { raw: string; date: Date; label: string }[];
+}
+
+function FilterBar({ filterProps, showSort = true }: { filterProps: FilterProps; showSort?: boolean }) {
+  const {
+    offices, office, setOffice,
+    timeFrame, setTimeFrame,
+    sortBy, setSortBy,
+    selectedMonth, setSelectedMonth,
+    selectedWeek, setSelectedWeek,
+    selectedDate, setSelectedDate,
+    selectedQuarter, setSelectedQuarter,
+    availableMonths, availableQuarters, availableWeeks, availableDates,
+  } = filterProps
+
+  // Determine which drill-down pickers to show
+  const showQuarter = ['YTD', 'All'].includes(timeFrame)
+  const showMonth = ['Monthly', 'Quarterly', 'YTD', 'All'].includes(timeFrame)
+  const showWeek = showMonth && (selectedMonth !== 'All' || timeFrame === 'Weekly')
+  const showDay = showWeek && (selectedWeek !== 'All' || timeFrame === 'Daily')
+
+  // Active breadcrumbs for drill-down path
+  const breadcrumbs: { label: string; onClear: () => void }[] = []
+  if (selectedQuarter !== 'All') breadcrumbs.push({ label: selectedQuarter, onClear: () => setSelectedQuarter('All') })
+  if (selectedMonth !== 'All') breadcrumbs.push({ label: selectedMonth, onClear: () => { setSelectedMonth('All'); setSelectedWeek('All'); setSelectedDate('All') } })
+  if (selectedWeek !== 'All') breadcrumbs.push({ label: `Week: ${selectedWeek}`, onClear: () => { setSelectedWeek('All'); setSelectedDate('All') } })
+  if (selectedDate !== 'All') breadcrumbs.push({ label: `Day: ${selectedDate}`, onClear: () => setSelectedDate('All') })
+
   return (
-    <div className="filter-bar">
-      <div className="seg-control">
-        {TIME_FRAMES.map(tf => (
-          <button key={tf} className={`seg-control__btn ${timeFrame === tf ? 'active' : ''}`} onClick={() => setTimeFrame(tf)}>
-            {tf === 'YTD' ? 'YTD' : tf === 'All' ? 'All' : tf}
-          </button>
-        ))}
-      </div>
-      <select className="dropdown" value={office} onChange={e => setOffice(e.target.value)}>
-        <option value="All">All Offices</option>
-        {offices.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      {showSort && (
-        <select className="dropdown" value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)}>
-          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>Sort: {o.label}</option>)}
+    <div className="space-y-2">
+      {/* Row 1: Time frame + office + sort */}
+      <div className="filter-bar">
+        <div className="seg-control">
+          {TIME_FRAMES.map(tf => (
+            <button key={tf} className={`seg-control__btn ${timeFrame === tf ? 'active' : ''}`} onClick={() => setTimeFrame(tf)}>
+              {tf === 'YTD' ? 'YTD' : tf === 'All' ? 'All' : tf}
+            </button>
+          ))}
+        </div>
+        <select className="dropdown" value={office} onChange={e => setOffice(e.target.value)}>
+          <option value="All">All Offices</option>
+          {offices.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
+        {showSort && (
+          <select className="dropdown" value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)}>
+            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>Sort: {o.label}</option>)}
+          </select>
+        )}
+      </div>
+
+      {/* Row 2: Granular drill-down pickers */}
+      <div className="filter-bar" style={{ animation: 'fadeIn 0.2s ease both' }}>
+        {showQuarter && availableQuarters.length > 1 && (
+          <select className="dropdown" value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)}
+            style={{ borderColor: selectedQuarter !== 'All' ? '#009FDB' : undefined }}>
+            <option value="All">All Quarters</option>
+            {availableQuarters.map(q => <option key={q} value={q}>{q}</option>)}
+          </select>
+        )}
+        {showMonth && availableMonths.length > 0 && (
+          <select className="dropdown" value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); setSelectedWeek('All'); setSelectedDate('All') }}
+            style={{ borderColor: selectedMonth !== 'All' ? '#009FDB' : undefined }}>
+            <option value="All">All Months</option>
+            {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        )}
+        {showWeek && availableWeeks.length > 0 && (
+          <select className="dropdown" value={selectedWeek} onChange={e => { setSelectedWeek(e.target.value); setSelectedDate('All') }}
+            style={{ borderColor: selectedWeek !== 'All' ? '#009FDB' : undefined }}>
+            <option value="All">All Weeks</option>
+            {availableWeeks.map(w => <option key={w} value={w}>{w}</option>)}
+          </select>
+        )}
+        {showDay && availableDates.length > 0 && (
+          <select className="dropdown" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
+            style={{ borderColor: selectedDate !== 'All' ? '#009FDB' : undefined }}>
+            <option value="All">All Days</option>
+            {availableDates.map(d => <option key={d.raw} value={d.raw}>{d.label}</option>)}
+          </select>
+        )}
+      </div>
+
+      {/* Breadcrumb chips */}
+      {breadcrumbs.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap" style={{ animation: 'fadeIn 0.15s ease both' }}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Viewing:</span>
+          {breadcrumbs.map((bc, i) => (
+            <button key={i} onClick={bc.onClear}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all hover:opacity-80"
+              style={{ background: 'rgba(0, 159, 219, 0.1)', color: '#067AB4', border: '1px solid rgba(0, 159, 219, 0.2)' }}>
+              {bc.label}
+              <X size={10} />
+            </button>
+          ))}
+          {breadcrumbs.length > 1 && (
+            <button onClick={() => { setSelectedQuarter('All'); setSelectedMonth('All'); setSelectedWeek('All'); setSelectedDate('All') }}
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-md transition-all hover:opacity-80"
+              style={{ color: 'var(--color-text-muted)' }}>
+              Clear all
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
 // === DASHBOARD VIEW (MAJOR REDESIGN) ===
-function DashboardView({ summary, offices, office, setOffice, timeFrame, setTimeFrame, sortBy, setSortBy, repStats, trendData }: any) {
+function DashboardView({ summary, repStats, trendData, filterProps }: { summary: any; repStats: any; trendData: any; filterProps: FilterProps }) {
   // Product mix data for donut chart
   const productMix = [
     { name: 'Fiber', value: summary.teamFiber, color: PRODUCT_COLORS.fiber },
@@ -337,7 +501,7 @@ function DashboardView({ summary, offices, office, setOffice, timeFrame, setTime
 
   return (
     <div className="page-container">
-      <FilterBar offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} sortBy={sortBy} setSortBy={setSortBy} />
+      <FilterBar filterProps={filterProps} />
 
       {/* Hero Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
@@ -489,7 +653,7 @@ function ProductCard({ icon: Icon, label, value, color, total }: { icon: any; la
 }
 
 // === LEADERBOARD VIEW ===
-function LeaderboardView({ summary, offices, office, setOffice, timeFrame, setTimeFrame, sortBy, setSortBy, repStats }: any) {
+function LeaderboardView({ summary, repStats, filterProps }: { summary: any; repStats: any; filterProps: FilterProps }) {
   const [search, setSearch] = useState('')
   
   const filteredReps = useMemo(() => {
@@ -502,7 +666,7 @@ function LeaderboardView({ summary, offices, office, setOffice, timeFrame, setTi
 
   return (
     <div className="page-container">
-      <FilterBar offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} sortBy={sortBy} setSortBy={setSortBy} />
+      <FilterBar filterProps={filterProps} />
 
       {/* Top 3 Podium */}
       {top3.length === 3 && !search && (
@@ -650,7 +814,7 @@ function LeaderboardRow({ rep, compact = false, style = {} }: { rep: any; compac
 }
 
 // === TRENDS VIEW ===
-function TrendsView({ offices, office, setOffice, timeFrame, setTimeFrame, trendData }: any) {
+function TrendsView({ trendData, filterProps }: { trendData: any; filterProps: FilterProps }) {
   const [metric, setMetric] = useState<'total' | 'fiber' | 'dtv' | 'lines' | 'adt'>('total')
   
   const metricConfig: Record<string, { color: string; label: string }> = {
@@ -663,7 +827,7 @@ function TrendsView({ offices, office, setOffice, timeFrame, setTimeFrame, trend
 
   return (
     <div className="page-container">
-      <FilterBar offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} sortBy={'Total' as SortBy} setSortBy={() => {}} showSort={false} />
+      <FilterBar filterProps={filterProps} showSort={false} />
 
       {/* Metric selector */}
       <div className="seg-control mt-4">
@@ -750,7 +914,8 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 }
 
 // === COMPARE VIEW ===
-function CompareView({ offices, office, setOffice, timeFrame, setTimeFrame }: any) {
+function CompareView({ filterProps }: { filterProps: FilterProps }) {
+  const { office, timeFrame } = filterProps
   const allReps = useMemo(() => {
     const data = filterByOffice(filterByTimeFrame(records, timeFrame), office)
     return getReps(data)
@@ -792,7 +957,7 @@ function CompareView({ offices, office, setOffice, timeFrame, setTimeFrame }: an
 
   return (
     <div className="page-container">
-      <FilterBar offices={offices} office={office} setOffice={setOffice} timeFrame={timeFrame} setTimeFrame={setTimeFrame} sortBy={'Total' as SortBy} setSortBy={() => {}} showSort={false} />
+      <FilterBar filterProps={filterProps} showSort={false} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <div className="stat-card" style={{ borderTop: '3px solid #009FDB' }}>
