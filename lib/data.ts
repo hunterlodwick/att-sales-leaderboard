@@ -1,0 +1,232 @@
+import { SaleRecord, RepStats, TeamSummary, TrendPoint, TimeFrame, Category, SortBy } from './types';
+
+// Parse date string like "10/1/2025" into a Date object
+export function parseDate(dateStr: string): Date {
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+  }
+  return new Date(dateStr);
+}
+
+// Get the current period boundaries
+export function getCurrentPeriod(): { start: Date; end: Date; label: string } {
+  const now = new Date();
+  const start = new Date(2025, 4, 1); // May 1, 2025
+  const end = now;
+  return { start, end, label: 'All Time' };
+}
+
+// Filter records by time frame
+export function filterByTimeFrame(records: SaleRecord[], timeFrame: TimeFrame): SaleRecord[] {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (timeFrame) {
+    case 'Daily': {
+      const todayStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+      return records.filter(r => r.weekStart === todayStr);
+    }
+    case 'Weekly': {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return records.filter(r => parseDate(r.weekStart) >= weekAgo);
+    }
+    case 'Monthly': {
+      const monthAgo = new Date(today);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      return records.filter(r => parseDate(r.weekStart) >= monthAgo);
+    }
+    case 'Quarterly': {
+      const quarterAgo = new Date(today);
+      quarterAgo.setMonth(quarterAgo.getMonth() - 3);
+      return records.filter(r => parseDate(r.weekStart) >= quarterAgo);
+    }
+    case 'YTD': {
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      return records.filter(r => parseDate(r.weekStart) >= yearStart);
+    }
+    case 'All':
+    default:
+      return records;
+  }
+}
+
+// Filter records by office
+export function filterByOffice(records: SaleRecord[], office: string): SaleRecord[] {
+  if (office === 'All') return records;
+  return records.filter(r => r.office === office);
+}
+
+// Filter records by rep
+export function filterByRep(records: SaleRecord[], rep: string): SaleRecord[] {
+  if (rep === 'All') return records;
+  return records.filter(r => r.rep === rep);
+}
+
+// Aggregate records into rep stats
+export function aggregateRepStats(records: SaleRecord[], sortBy: SortBy = 'Total'): RepStats[] {
+  const repMap = new Map<string, {
+    fiber: number; dtv: number; lines: number; adt: number; total: number;
+    activeDays: Set<string>; lastSaleDate: string | null; office: string;
+  }>();
+
+  for (const r of records) {
+    if (!repMap.has(r.rep)) {
+      repMap.set(r.rep, {
+        fiber: 0, dtv: 0, lines: 0, adt: 0, total: 0,
+        activeDays: new Set(), lastSaleDate: null, office: r.office
+      });
+    }
+    const stats = repMap.get(r.rep)!;
+    stats.fiber += r.fiber;
+    stats.dtv += r.dtv;
+    stats.lines += r.lines;
+    stats.adt += r.adt;
+    stats.total += r.total;
+    if (r.total > 0) {
+      stats.activeDays.add(r.weekStart);
+      if (!stats.lastSaleDate || parseDate(r.weekStart) > parseDate(stats.lastSaleDate)) {
+        stats.lastSaleDate = r.weekStart;
+      }
+    }
+  }
+
+  const results: RepStats[] = [];
+  for (const [rep, stats] of repMap) {
+    results.push({
+      rep,
+      fiber: stats.fiber,
+      dtv: stats.dtv,
+      lines: stats.lines,
+      adt: stats.adt,
+      total: stats.total,
+      dtvFiberPct: stats.fiber > 0 ? (stats.dtv / stats.fiber) * 100 : 0,
+      linesFiberPct: stats.fiber > 0 ? (stats.lines / stats.fiber) * 100 : 0,
+      rank: 0,
+      activeDays: stats.activeDays.size,
+      lastSaleDate: stats.lastSaleDate,
+      office: stats.office,
+    });
+  }
+
+  // Sort by selected metric
+  const sortKey = sortBy.toLowerCase() as 'total' | 'fiber' | 'dtv' | 'lines' | 'adt';
+  results.sort((a, b) => (b[sortKey] as number) - (a[sortKey] as number));
+
+  // Assign ranks
+  results.forEach((r, i) => { r.rank = i + 1; });
+
+  return results;
+}
+
+// Get team summary
+export function getTeamSummary(records: SaleRecord[]): TeamSummary {
+  const stats = aggregateRepStats(records);
+  const activeReps = stats.filter(s => s.total > 0);
+  const topPerformer = stats[0] || { rep: '—', total: 0 };
+
+  const fiber = records.reduce((s, r) => s + r.fiber, 0);
+  const dtv = records.reduce((s, r) => s + r.dtv, 0);
+  const lines = records.reduce((s, r) => s + r.lines, 0);
+  const adt = records.reduce((s, r) => s + r.adt, 0);
+  const total = records.reduce((s, r) => s + r.total, 0);
+
+  return {
+    totalSales: total,
+    activeReps: activeReps.length,
+    avgPerRep: activeReps.length > 0 ? total / activeReps.length : 0,
+    topPerformer: topPerformer.rep,
+    topPerformerTotal: topPerformer.total,
+    teamFiber: fiber,
+    teamDtv: dtv,
+    teamLines: lines,
+    teamAdt: adt,
+    teamDtvFiberPct: fiber > 0 ? (dtv / fiber) * 100 : 0,
+    teamLinesFiberPct: fiber > 0 ? (lines / fiber) * 100 : 0,
+  };
+}
+
+// Get trend data (weekly time series)
+export function getTrendData(records: SaleRecord[], groupBy: 'week' | 'month' = 'week'): TrendPoint[] {
+  const groups = new Map<string, { fiber: number; dtv: number; lines: number; adt: number; total: number }>();
+
+  for (const r of records) {
+    let label: string;
+    if (groupBy === 'month') {
+      label = r.month;
+    } else {
+      label = r.weekLabel;
+    }
+
+    if (!groups.has(label)) {
+      groups.set(label, { fiber: 0, dtv: 0, lines: 0, adt: 0, total: 0 });
+    }
+    const g = groups.get(label)!;
+    g.fiber += r.fiber;
+    g.dtv += r.dtv;
+    g.lines += r.lines;
+    g.adt += r.adt;
+    g.total += r.total;
+  }
+
+  // Sort chronologically
+  const sorted = Array.from(groups.entries()).sort((a, b) => {
+    if (groupBy === 'month') {
+      // Sort months chronologically
+      const monthOrder: Record<string, number> = {
+        'October 2025': 0, 'November 2025': 1, 'December 2025': 2,
+        'January 2026': 3, 'February 2026': 4, 'March 2026': 5,
+        'April 2026': 6, 'May 2026': 7, 'Jun 2026': 8, 'June 2026': 8,
+        'Jul 2026': 9, 'July 2026': 9, 'August 2026': 10, 'September 2026': 11,
+      };
+      return (monthOrder[a[0]] ?? 99) - (monthOrder[b[0]] ?? 99);
+    }
+    // Sort weeks by date
+    const dateA = parseDate(a[0]);
+    const dateB = parseDate(b[0]);
+    return dateA.getTime() - dateB.getTime();
+  });
+
+  return sorted.map(([label, data]) => ({
+    label,
+    fiber: data.fiber,
+    dtv: data.dtv,
+    lines: data.lines,
+    adt: data.adt,
+    total: data.total,
+  }));
+}
+
+// Get unique offices
+export function getOffices(records: SaleRecord[]): string[] {
+  return Array.from(new Set(records.map(r => r.office))).sort();
+}
+
+// Get unique reps
+export function getReps(records: SaleRecord[]): string[] {
+  return Array.from(new Set(records.map(r => r.rep))).sort((a, b) => a.localeCompare(b));
+}
+
+// Get unique months
+export function getMonths(records: SaleRecord[]): string[] {
+  const months = Array.from(new Set(records.map(r => r.month)));
+  const monthOrder: Record<string, number> = {
+    'October 2025': 0, 'November 2025': 1, 'December 2025': 2,
+    'January 2026': 3, 'February 2026': 4, 'March 2026': 5,
+    'April 2026': 6, 'May 2026': 7, 'June 2026': 8, 'Jun 2026': 8,
+    'July 2026': 9, 'Jul 2026': 9, 'August 2026': 10, 'September 2026': 11,
+  };
+  return months.sort((a, b) => (monthOrder[a] ?? 99) - (monthOrder[b] ?? 99));
+}
+
+// Format number with commas and optional decimals
+export function formatNumber(n: number, decimals = 0): string {
+  if (n === 0) return '0';
+  return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Format percentage
+export function formatPct(n: number): string {
+  return `${n.toFixed(1)}%`;
+}
