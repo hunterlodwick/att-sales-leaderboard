@@ -1,28 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #050507;
-  --color-surface: #0e0e12;
-  --color-surface-light: #16161b;
-  --color-surface-lighter: #1c1c22;
-  --color-border: #25252c;
-  --color-border-light: #2e2e36;
-  --color-text: #e8e8ec;
-  --color-text-secondary: #8b8b96;
-  --color-text-muted: #5c5c66;
-  --color-accent: #3aa5dc;
-  --color-accent-bright: #5bc8ff;
-  --color-fiber: #3aa5dc;
-  --color-dtv: #f59e0b;
-  --color-lines: #22c55e;
-  --color-adt: #a855f7;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-gold: #fbbf24;
-  --color-silver: #c0c0c0;
-  --color-bronze: #cd7f32;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --color-bg: #050508;
+  --color-surface: #0c0f14;
+  --color-surface-light: #131720;
+  --color-surface-lighter: #1a1f2b;
+  --color-border: #1e2535;
+  --color-border-light: #283040;
+  --color-text: #eaecf0;
+  --color-text-secondary: #8a93a6;
+  --color-text-muted: #545e73;
+  --color-accent: #009FDB;
+  --color-accent-bright: #33b5e5;
+  --color-att-blue: #067AB4;
+  --color-att-light-blue: #009FDB;
+  --color-att-orange: #FF7200;
+  --color-att-gold: #FCB314;
+  --color-fiber: #009FDB;
+  --color-dtv: #FF7200;
+  --color-lines: #39B54A;
+  --color-adt: #9B59B6;
+  --color-success: #39B54A;
+  --color-warning: #FF7200;
+  --color-danger: #E04040;
+  --color-gold: #FCB314;
+  --color-silver: #B8C0CC;
+  --color-bronze: #C57A3A;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
@@ -91,7 +95,7 @@
   .seg-control__btn.active {
     background: var(--color-accent);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(58, 165, 220, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 159, 219, 0.3);
   }
   
   /* Dropdown */
@@ -146,8 +150,8 @@
     border-color: var(--color-border);
   }
   .lb-row--highlight {
-    background: linear-gradient(135deg, rgba(58, 165, 220, 0.08), transparent);
-    border-color: rgba(58, 165, 220, 0.2);
+    background: linear-gradient(135deg, rgba(0, 159, 219, 0.08), transparent);
+    border-color: rgba(0, 159, 219, 0.2);
   }
   
   /* Rank badge */
@@ -163,16 +167,16 @@
     flex-shrink: 0;
   }
   .rank-badge--1 {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    background: linear-gradient(135deg, #FCB314, #E5A000);
     color: #1a1a1a;
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+    box-shadow: 0 0 12px rgba(252, 179, 20, 0.3);
   }
   .rank-badge--2 {
-    background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+    background: linear-gradient(135deg, #C8D0DC, #9BA4B4);
     color: #1a1a1a;
   }
   .rank-badge--3 {
-    background: linear-gradient(135deg, #cd7f32, #a0621e);
+    background: linear-gradient(135deg, #C57A3A, #A05E1E);
     color: #fff;
   }
   .rank-badge--normal {
@@ -191,10 +195,10 @@
     font-weight: 700;
     letter-spacing: 0.02em;
   }
-  .chip--fiber { background: rgba(58, 165, 220, 0.12); color: var(--color-fiber); }
-  .chip--dtv { background: rgba(245, 158, 11, 0.12); color: var(--color-dtv); }
-  .chip--lines { background: rgba(34, 197, 94, 0.12); color: var(--color-lines); }
-  .chip--adt { background: rgba(168, 85, 247, 0.12); color: var(--color-adt); }
+  .chip--fiber { background: rgba(0, 159, 219, 0.12); color: var(--color-fiber); }
+  .chip--dtv { background: rgba(255, 114, 0, 0.12); color: var(--color-dtv); }
+  .chip--lines { background: rgba(57, 181, 74, 0.12); color: var(--color-lines); }
+  .chip--adt { background: rgba(155, 89, 182, 0.12); color: var(--color-adt); }
   
   /* Tab bar */
   .tab-bar {

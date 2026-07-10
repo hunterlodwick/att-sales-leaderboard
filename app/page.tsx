@@ -2,10 +2,8 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import {
-  BarChart3, Trophy, TrendingUp, GitCompareArrows,
-  Flame, Wifi, Tv, Smartphone, ShieldCheck, Crown, Medal,
-  ArrowUp, ArrowDown, Minus, Search, X, Calendar, ChevronRight,
-  Users, Building2, Zap, LayoutDashboard
+  BarChart3,
+  Search, X, Calendar, ChevronRight,
 } from 'lucide-react'
 import salesData from '@/data/sales-data.json'
 import type { SaleRecord } from '@/lib/types'
@@ -16,6 +14,123 @@ import {
 } from '@/lib/data'
 
 const records = salesData as SaleRecord[]
+
+// === CUSTOM SVG ICON COMPONENTS (AT&T-branded, professional) ===
+
+function ATTGlobeIcon({ size = 20, color = '#fff' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="9.5" stroke={color} strokeWidth="1.5" />
+      <ellipse cx="12" cy="12" rx="4" ry="9.5" stroke={color} strokeWidth="1.5" />
+      <path d="M3.5 9h17M3.5 15h17" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function FiberIcon({ size = 22, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 20V14" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 14C12 10 8 8 5 4" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 14C12 10 16 8 19 4" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <rect x="10" y="20" width="4" height="2" rx="1" fill={color} />
+    </svg>
+  )
+}
+
+function DTVIcon({ size = 22, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="4" width="20" height="13" rx="2" stroke={color} strokeWidth="2" />
+      <path d="M8 20h8" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 17v3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="10.5" r="1" fill={color} />
+    </svg>
+  )
+}
+
+function WirelessIcon({ size = 22, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="9" y="14" width="6" height="8" rx="1.5" stroke={color} strokeWidth="2" />
+      <path d="M12 14V10" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path d="M8 7a5.66 5.66 0 0 1 8 0" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <path d="M5 4a9.43 9.43 0 0 1 14 0" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ADTIcon({ size = 22, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L4 6v5c0 5.25 3.4 10.15 8 11.4C16.6 21.15 20 16.25 20 11V6l-8-4z" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function CrownIcon({ size = 24, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 18L5 8l4 4 3-6 3 6 4-4 2 10H3z" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="12" cy="6" r="1.5" fill={color} />
+    </svg>
+  )
+}
+
+function MedalIcon({ size = 24, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="14" r="6" stroke={color} strokeWidth="2" />
+      <path d="M8 2h2l2 5-2 5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M16 2h-2l-2 5 2 5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M10 14l1.5 1.5L14 12.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function DashboardIcon({ size = 20, strokeWidth = 2, color = 'currentColor' }: { size?: number; strokeWidth?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+      <rect x="14" y="3" width="7" height="4" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+      <rect x="3" y="14" width="7" height="4" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+      <rect x="14" y="11" width="7" height="7" rx="1.5" stroke={color} strokeWidth={strokeWidth} />
+    </svg>
+  )
+}
+
+function TrophyIcon({ size = 20, strokeWidth = 2, color = 'currentColor' }: { size?: number; strokeWidth?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 21h8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <path d="M12 17v4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" stroke={color} strokeWidth={strokeWidth} />
+      <path d="M7 7H5a2 2 0 0 0-2 2 3 3 0 0 0 3 3h1" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <path d="M17 7h2a2 2 0 0 1 2 2 3 3 0 0 1-3 3h-1" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function TrendsIcon({ size = 20, strokeWidth = 2, color = 'currentColor' }: { size?: number; strokeWidth?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 17l5-5 4 4 8-10" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 6h4v4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function CompareIcon({ size = 20, strokeWidth = 2, color = 'currentColor' }: { size?: number; strokeWidth?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 3l4 4-4 4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 7H8a4 4 0 0 0-4 4v1" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <path d="M8 21l-4-4 4-4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 17h12a4 4 0 0 0 4-4v-1" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </svg>
+  )
+}
 
 type Tab = 'dashboard' | 'leaderboard' | 'trends' | 'compare'
 type TimeFrame = 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'YTD' | 'All'
@@ -77,8 +192,8 @@ function Header({ timeFrame, office }: { timeFrame: TimeFrame; office: string })
   return (
     <header className="app-header">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3aa5dc, #067AB4)' }}>
-          <Zap size={18} color="#fff" fill="#fff" />
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #009FDB, #067AB4)' }}>
+          <ATTGlobeIcon size={18} color="#fff" />
         </div>
         <div>
           <div className="font-bold text-base leading-tight" style={{ color: 'var(--color-text)' }}>ASP / RIVVIA</div>
@@ -99,19 +214,19 @@ function Header({ timeFrame, office }: { timeFrame: TimeFrame; office: string })
 
 // === TAB BAR ===
 function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
-  const tabs: { id: Tab; icon: any; label: string }[] = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Home' },
-    { id: 'leaderboard', icon: Trophy, label: 'Rank' },
-    { id: 'trends', icon: TrendingUp, label: 'Trends' },
-    { id: 'compare', icon: GitCompareArrows, label: 'Compare' },
+  const tabs: { id: Tab; renderIcon: (active: boolean) => React.ReactNode; label: string }[] = [
+    { id: 'dashboard', renderIcon: (active) => <DashboardIcon size={20} strokeWidth={active ? 2.5 : 2} />, label: 'Home' },
+    { id: 'leaderboard', renderIcon: (active) => <TrophyIcon size={20} strokeWidth={active ? 2.5 : 2} />, label: 'Rank' },
+    { id: 'trends', renderIcon: (active) => <TrendsIcon size={20} strokeWidth={active ? 2.5 : 2} />, label: 'Trends' },
+    { id: 'compare', renderIcon: (active) => <CompareIcon size={20} strokeWidth={active ? 2.5 : 2} />, label: 'Compare' },
   ]
   return (
     <nav className="tab-bar">
       {tabs.map(t => {
-        const Icon = t.icon
+        const isActive = tab === t.id
         return (
-          <button key={t.id} className={`tab-bar__btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
-            <Icon size={20} strokeWidth={tab === t.id ? 2.5 : 2} />
+          <button key={t.id} className={`tab-bar__btn ${isActive ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+            {t.renderIcon(isActive)}
             {t.label}
           </button>
         )
@@ -181,10 +296,10 @@ function DashboardView({ summary, offices, office, setOffice, timeFrame, setTime
       {/* Product breakdown */}
       <h2 className="text-sm font-bold uppercase tracking-wider mt-6 mb-3" style={{ color: 'var(--color-text-muted)' }}>Production by Product</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <ProductCard icon={Wifi} label="Fiber" value={summary.teamFiber} color="var(--color-fiber)" />
-        <ProductCard icon={Tv} label="DTV" value={summary.teamDtv} color="var(--color-dtv)" />
-        <ProductCard icon={Smartphone} label="Lines" value={summary.teamLines} color="var(--color-lines)" />
-        <ProductCard icon={ShieldCheck} label="ADT" value={summary.teamAdt} color="var(--color-adt)" />
+        <ProductCard icon={FiberIcon} label="Fiber" value={summary.teamFiber} color="var(--color-fiber)" />
+        <ProductCard icon={DTVIcon} label="DTV" value={summary.teamDtv} color="var(--color-dtv)" />
+        <ProductCard icon={WirelessIcon} label="Lines" value={summary.teamLines} color="var(--color-lines)" />
+        <ProductCard icon={ADTIcon} label="ADT" value={summary.teamAdt} color="var(--color-adt)" />
       </div>
 
       {/* Mini leaderboard */}
@@ -282,19 +397,18 @@ function LeaderboardView({ summary, offices, office, setOffice, timeFrame, setTi
 // === PODIUM CARD ===
 function PodiumCard({ rep, place }: { rep: any; place: number }) {
   const config = {
-    1: { color: 'var(--color-gold)', bg: 'rgba(251, 191, 36, 0.08)', icon: Crown, size: 'md:scale-110' },
-    2: { color: 'var(--color-silver)', bg: 'rgba(192, 192, 192, 0.06)', icon: Medal, size: '' },
-    3: { color: 'var(--color-bronze)', bg: 'rgba(205, 127, 50, 0.06)', icon: Medal, size: '' },
+    1: { color: 'var(--color-gold)', bg: 'rgba(252, 179, 20, 0.08)', renderIcon: () => <CrownIcon size={24} color="var(--color-gold)" />, size: 'md:scale-110' },
+    2: { color: 'var(--color-silver)', bg: 'rgba(184, 192, 204, 0.06)', renderIcon: () => <MedalIcon size={24} color="var(--color-silver)" />, size: '' },
+    3: { color: 'var(--color-bronze)', bg: 'rgba(197, 122, 58, 0.06)', renderIcon: () => <MedalIcon size={24} color="var(--color-bronze)" />, size: '' },
   }[place] as any
 
-  const Icon = config.icon
   const formattedName = rep.rep.toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
 
   return (
     <div className="stat-card text-center" style={{ background: config.bg, borderColor: config.color + '33' }}>
       <div className="flex justify-center mb-2">
         <div className="w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center" style={{ background: config.color + '20' }}>
-          <Icon size={24} color={config.color} />
+          {config.renderIcon()}
         </div>
       </div>
       <div className="text-xs font-bold mb-0.5" style={{ color: config.color }}>#{place}</div>
@@ -331,10 +445,10 @@ function LeaderboardRow({ rep, compact = false }: { rep: any; compact?: boolean 
           </div>
           {expanded && (
             <div className="flex gap-2 mt-2 flex-wrap">
-              <span className="chip chip--fiber"><Wifi size={11} /> {formatNumber(rep.fiber)}</span>
-              <span className="chip chip--dtv"><Tv size={11} /> {formatNumber(rep.dtv)}</span>
-              <span className="chip chip--lines"><Smartphone size={11} /> {formatNumber(rep.lines)}</span>
-              {rep.adt > 0 && <span className="chip chip--adt"><ShieldCheck size={11} /> {formatNumber(rep.adt)}</span>}
+              <span className="chip chip--fiber"><FiberIcon size={11} /> {formatNumber(rep.fiber)}</span>
+              <span className="chip chip--dtv"><DTVIcon size={11} /> {formatNumber(rep.dtv)}</span>
+              <span className="chip chip--lines"><WirelessIcon size={11} /> {formatNumber(rep.lines)}</span>
+              {rep.adt > 0 && <span className="chip chip--adt"><ADTIcon size={11} /> {formatNumber(rep.adt)}</span>}
               <span className="chip" style={{ background: 'var(--color-surface-lighter)', color: 'var(--color-text-secondary)' }}>
                 DTV/F: {formatPct(rep.dtvFiberPct)}
               </span>
@@ -439,7 +553,7 @@ function TrendsView({ offices, office, setOffice, timeFrame, setTimeFrame, trend
                 {d.fiber > 0 && (
                   <div className="flex items-center justify-center rounded" style={{
                     width: `${(d.fiber / d.total) * 100}%`,
-                    background: 'rgba(58, 165, 220, 0.3)',
+                    background: 'rgba(0, 159, 219, 0.3)',
                     minWidth: '20px',
                   }}>
                     <span className="text-[10px] font-bold" style={{ color: 'var(--color-fiber)' }}>{formatNumber(d.fiber)}</span>
@@ -448,7 +562,7 @@ function TrendsView({ offices, office, setOffice, timeFrame, setTimeFrame, trend
                 {d.dtv > 0 && (
                   <div className="flex items-center justify-center rounded" style={{
                     width: `${(d.dtv / d.total) * 100}%`,
-                    background: 'rgba(245, 158, 11, 0.3)',
+                    background: 'rgba(255, 114, 0, 0.3)',
                     minWidth: '20px',
                   }}>
                     <span className="text-[10px] font-bold" style={{ color: 'var(--color-dtv)' }}>{formatNumber(d.dtv)}</span>
@@ -457,7 +571,7 @@ function TrendsView({ offices, office, setOffice, timeFrame, setTimeFrame, trend
                 {d.lines > 0 && (
                   <div className="flex items-center justify-center rounded" style={{
                     width: `${(d.lines / d.total) * 100}%`,
-                    background: 'rgba(34, 197, 94, 0.3)',
+                    background: 'rgba(57, 181, 74, 0.3)',
                     minWidth: '20px',
                   }}>
                     <span className="text-[10px] font-bold" style={{ color: 'var(--color-lines)' }}>{formatNumber(d.lines)}</span>
@@ -513,10 +627,10 @@ function CompareView({ offices, office, setOffice, timeFrame, setTimeFrame }: an
   }, [filtered, rep2])
 
   const metrics = [
-    { key: 'fiber', label: 'Fiber', color: 'var(--color-fiber)', icon: Wifi },
-    { key: 'dtv', label: 'DTV', color: 'var(--color-dtv)', icon: Tv },
-    { key: 'lines', label: 'Lines', color: 'var(--color-lines)', icon: Smartphone },
-    { key: 'adt', label: 'ADT', color: 'var(--color-adt)', icon: ShieldCheck },
+    { key: 'fiber', label: 'Fiber', color: 'var(--color-fiber)', icon: FiberIcon },
+    { key: 'dtv', label: 'DTV', color: 'var(--color-dtv)', icon: DTVIcon },
+    { key: 'lines', label: 'Lines', color: 'var(--color-lines)', icon: WirelessIcon },
+    { key: 'adt', label: 'ADT', color: 'var(--color-adt)', icon: ADTIcon },
     { key: 'total', label: 'Total', color: 'var(--color-accent)', icon: BarChart3 },
   ]
 
@@ -572,7 +686,7 @@ function CompareView({ offices, office, setOffice, timeFrame, setTimeFrame }: an
                     <div className="flex-1 flex justify-end">
                       <div className="rounded h-6 flex items-center justify-end pr-2" style={{
                         width: `${(v1 / max) * 100}%`,
-                        background: winner === 1 ? 'rgba(58, 165, 220, 0.5)' : 'rgba(58, 165, 220, 0.2)',
+                        background: winner === 1 ? 'rgba(0, 159, 219, 0.5)' : 'rgba(0, 159, 219, 0.2)',
                         minWidth: '28px',
                       }}>
                         <span className="text-[11px] font-bold" style={{ color: 'var(--color-text)' }}>{formatNumber(v1)}</span>
@@ -582,7 +696,7 @@ function CompareView({ offices, office, setOffice, timeFrame, setTimeFrame }: an
                     <div className="flex-1">
                       <div className="rounded h-6 flex items-center justify-start pl-2" style={{
                         width: `${(v2 / max) * 100}%`,
-                        background: winner === 2 ? 'rgba(245, 158, 11, 0.5)' : 'rgba(245, 158, 11, 0.2)',
+                        background: winner === 2 ? 'rgba(255, 114, 0, 0.5)' : 'rgba(255, 114, 0, 0.2)',
                         minWidth: '28px',
                       }}>
                         <span className="text-[11px] font-bold" style={{ color: 'var(--color-text)' }}>{formatNumber(v2)}</span>
