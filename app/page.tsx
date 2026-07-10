@@ -197,16 +197,37 @@ function getInitials(name: string): string {
 }
 
 // === REP AVATAR COMPONENT ===
-function RepAvatar({ name, size = 'md', onClick }: { name: string; size?: 'sm' | 'md' | 'lg' | 'xl'; onClick?: (e: React.MouseEvent) => void }) {
+function RepAvatar({ name, size = 'md', onClick, editable = false }: { name: string; size?: 'sm' | 'md' | 'lg' | 'xl'; onClick?: (e: React.MouseEvent) => void; editable?: boolean }) {
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const avatarUrl = getRepAvatarUrl(name);
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load from localStorage
+    const saved = localStorage.getItem(`avatar_${name}`);
+    if (saved) {
+      setLocalAvatar(saved);
+      setImgError(false); // reset error if we have a local save
+    }
+
+    // Listen for updates from the upload modal
+    const handleUpdate = (e: any) => {
+      if (e.detail?.name === name) {
+        setLocalAvatar(localStorage.getItem(`avatar_${name}`));
+        setImgError(false);
+      }
+    };
+    window.addEventListener('avatarUpdated', handleUpdate);
+    return () => window.removeEventListener('avatarUpdated', handleUpdate);
+  }, [name]);
+
+  const avatarUrl = localAvatar || getRepAvatarUrl(name);
   const initials = getInitials(name);
   const color = getAvatarColor(name);
   const sizeClass = size === 'sm' ? 'rep-avatar--sm' : size === 'lg' ? 'rep-avatar--lg' : size === 'xl' ? 'rep-avatar--xl' : '';
 
   return (
-    <div className={`rep-avatar ${sizeClass}`} onClick={onClick} style={{ cursor: onClick ? 'pointer' : undefined }}>
+    <div className={`rep-avatar ${sizeClass} ${editable ? 'rep-avatar--editable' : ''}`} onClick={onClick} style={{ cursor: onClick ? 'pointer' : undefined }}>
       {!imgError ? (
         <img
           src={avatarUrl}
@@ -221,12 +242,17 @@ function RepAvatar({ name, size = 'md', onClick }: { name: string; size?: 'sm' |
           {initials}
         </div>
       )}
+      {editable && (
+        <div className="rep-avatar__edit-overlay">
+          <Camera size={20} color="#fff" />
+        </div>
+      )}
     </div>
   );
 }
 
 // === REP SCORECARD MODAL ===
-function RepScorecardModal({ repName, repStats, onClose }: { repName: string; repStats: any; onClose: () => void }) {
+function RepScorecardModal({ repName, repStats, onClose, onEditAvatar }: { repName: string; repStats: any; onClose: () => void; onEditAvatar?: (name: string) => void }) {
   const formattedName = repName.toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
   const personalBests = useMemo(() => getRepPersonalBests(records, repName), [repName]);
   const conversions = useMemo(() => getRepConversions(records, repName), [repName]);
@@ -254,7 +280,7 @@ function RepScorecardModal({ repName, repStats, onClose }: { repName: string; re
             <X size={16} />
           </button>
           <div className="flex justify-center mb-3">
-            <RepAvatar name={repName} size="xl" />
+            <RepAvatar name={repName} size="xl" editable={!!onEditAvatar} onClick={() => onEditAvatar?.(repName)} />
           </div>
           <div className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{formattedName}</div>
           <div className="flex items-center justify-center gap-2 mt-1">
@@ -405,8 +431,8 @@ function RepScorecardModal({ repName, repStats, onClose }: { repName: string; re
 }
 
 // === AVATAR UPLOAD MODAL ===
-function AvatarUploadModal({ onClose }: { onClose: () => void }) {
-  const [selectedRep, setSelectedRep] = useState('');
+function AvatarUploadModal({ onClose, initialRep = '' }: { onClose: () => void, initialRep?: string }) {
+  const [selectedRep, setSelectedRep] = useState(initialRep);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -423,33 +449,39 @@ function AvatarUploadModal({ onClose }: { onClose: () => void }) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) {
+      if (f.size > 2 * 1024 * 1024) {
+        alert("File size must be less than 2MB");
+        return;
+      }
       setFile(f);
       setPreview(URL.createObjectURL(f));
       setSuccess('');
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!file || !selectedRep) return;
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('rep', selectedRep);
-      const res = await fetch('/api/upload-avatar', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data.success) {
-        setSuccess(`Photo uploaded for ${selectedRep.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}`);
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      try {
+        const base64String = reader.result as string;
+        localStorage.setItem(`avatar_${selectedRep}`, base64String);
+        
+        // Notify other components that the avatar changed
+        window.dispatchEvent(new CustomEvent('avatarUpdated', { detail: { name: selectedRep } }));
+        
+        setSuccess(`Photo saved for ${selectedRep.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}`);
         setFile(null);
         setPreview(null);
-      } else {
-        alert(data.error || 'Upload failed');
+      } catch (e) {
+        alert("Upload failed. The image might be too large.");
+      } finally {
+        setUploading(false);
       }
-    } catch {
-      alert('Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -576,6 +608,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function Home() {
   const [selectedRepForScorecard, setSelectedRepForScorecard] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadRepModalPrefill, setUploadRepModalPrefill] = useState<string>('');
   const [tab, setTab] = useState<Tab>('dashboard')
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('YTD')
   const [office, setOffice] = useState<string>('All')
@@ -701,12 +734,23 @@ export default function Home() {
           repName={selectedRepForScorecard}
           repStats={selectedRepStats}
           onClose={() => setSelectedRepForScorecard(null)}
+          onEditAvatar={(name) => {
+            setUploadRepModalPrefill(name);
+            setShowUploadModal(true);
+            setSelectedRepForScorecard(null);
+          }}
         />
       )}
 
       {/* Upload Modal */}
       {showUploadModal && (
-        <AvatarUploadModal onClose={() => setShowUploadModal(false)} />
+        <AvatarUploadModal 
+          onClose={() => {
+            setShowUploadModal(false);
+            setUploadRepModalPrefill('');
+          }} 
+          initialRep={uploadRepModalPrefill}
+        />
       )}
     </>
   )

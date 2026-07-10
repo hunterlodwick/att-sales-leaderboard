@@ -560,6 +560,19 @@
   .rep-avatar--xl .rep-avatar__initials {
     font-size: 32px;
   }
+  .rep-avatar__edit-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .rep-avatar--editable:hover .rep-avatar__edit-overlay {
+    opacity: 1;
+  }
 }
 
 /* ========================= */
