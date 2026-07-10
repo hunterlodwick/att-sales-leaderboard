@@ -55,3 +55,20 @@ export interface TrendPoint {
   adt: number;
   total: number;
 }
+
+export interface RepPersonalBests {
+  bestDay: { date: string; total: number };
+  bestWeek: { week: string; total: number };
+  bestMonth: { month: string; total: number };
+}
+
+export interface RepConversions {
+  dtvFiberPct: number;
+  linesFiberPct: number;
+  fiberWithDtv: number;
+  fiberWithLines: number;
+  totalFiber: number;
+  totalDtv: number;
+  totalLines: number;
+  totalAdt: number;
+}

@@ -1,4 +1,4 @@
-import { SaleRecord, RepStats, TeamSummary, TrendPoint, TimeFrame, Category, SortBy } from './types';
+import { SaleRecord, RepStats, TeamSummary, TrendPoint, TimeFrame, Category, SortBy, RepPersonalBests, RepConversions } from './types';
 
 // Parse date string — handles multiple formats:
 // "10/1/2025", "10/1/25", "2026-07-03 0:00:00", "2026-07-03"
@@ -327,4 +327,83 @@ export function formatNumber(n: number, decimals = 0): string {
 // Format percentage
 export function formatPct(n: number): string {
   return `${n.toFixed(1)}%`;
+}
+
+// Generate URL-safe slug from rep name
+export function getRepSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// Get avatar URL for a rep (served from public/avatars/)
+export function getRepAvatarUrl(name: string): string {
+  return `/avatars/${getRepSlug(name)}.jpg`;
+}
+
+// Compute personal bests for a rep across all records
+export function getRepPersonalBests(records: SaleRecord[], repName: string): RepPersonalBests {
+  const repRecords = records.filter(r => r.rep === repName);
+
+  // Best day
+  const dayMap = new Map<string, number>();
+  for (const r of repRecords) {
+    const key = r.weekStart;
+    dayMap.set(key, (dayMap.get(key) || 0) + r.total);
+  }
+  let bestDay = { date: '—', total: 0 };
+  for (const [date, total] of dayMap) {
+    if (total > bestDay.total) bestDay = { date, total };
+  }
+
+  // Best week
+  const weekMap = new Map<string, number>();
+  for (const r of repRecords) {
+    const key = r.weekLabel;
+    weekMap.set(key, (weekMap.get(key) || 0) + r.total);
+  }
+  let bestWeek = { week: '—', total: 0 };
+  for (const [week, total] of weekMap) {
+    if (total > bestWeek.total) bestWeek = { week, total };
+  }
+
+  // Best month
+  const monthMap = new Map<string, number>();
+  for (const r of repRecords) {
+    const key = r.month;
+    monthMap.set(key, (monthMap.get(key) || 0) + r.total);
+  }
+  let bestMonth = { month: '—', total: 0 };
+  for (const [month, total] of monthMap) {
+    if (total > bestMonth.total) bestMonth = { month, total };
+  }
+
+  return { bestDay, bestWeek, bestMonth };
+}
+
+// Compute conversion/attach rates for a rep
+export function getRepConversions(records: SaleRecord[], repName: string): RepConversions {
+  const repRecords = records.filter(r => r.rep === repName);
+
+  const totalFiber = repRecords.reduce((s, r) => s + r.fiber, 0);
+  const totalDtv = repRecords.reduce((s, r) => s + r.dtv, 0);
+  const totalLines = repRecords.reduce((s, r) => s + r.lines, 0);
+  const totalAdt = repRecords.reduce((s, r) => s + r.adt, 0);
+
+  // Count days where fiber AND dtv both had sales (proxy for attach rate)
+  let fiberWithDtv = 0;
+  let fiberWithLines = 0;
+  for (const r of repRecords) {
+    if (r.fiber > 0 && r.dtv > 0) fiberWithDtv += Math.min(r.fiber, r.dtv);
+    if (r.fiber > 0 && r.lines > 0) fiberWithLines += Math.min(r.fiber, r.lines);
+  }
+
+  return {
+    dtvFiberPct: totalFiber > 0 ? (totalDtv / totalFiber) * 100 : 0,
+    linesFiberPct: totalFiber > 0 ? (totalLines / totalFiber) * 100 : 0,
+    fiberWithDtv,
+    fiberWithLines,
+    totalFiber,
+    totalDtv,
+    totalLines,
+    totalAdt,
+  };
 }

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
-  BarChart3, Search, X, Calendar, ChevronRight, ChevronDown,
+  BarChart3, Search, X, Calendar, ChevronRight, ChevronDown, Camera, Upload, User, Star, Award, Zap, TrendingUp,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -16,7 +16,8 @@ import {
   aggregateRepStats, getTeamSummary,
   getTrendData, getOffices, getReps, getMonths, getQuarters, getWeeks, getDates,
   getWeeksInMonth, getDatesInWeek,
-  formatNumber, formatPct, parseDate
+  formatNumber, formatPct, parseDate,
+  getRepSlug, getRepAvatarUrl, getRepPersonalBests, getRepConversions,
 } from '@/lib/data'
 
 const records = salesData as SaleRecord[]
@@ -173,6 +174,369 @@ const PRODUCT_COLORS = {
   adt: '#9B59B6',
 }
 
+// === AVATAR COLOR PALETTE ===
+const AVATAR_COLORS = [
+  '#009FDB', '#067AB4', '#FF7200', '#39B54A', '#9B59B6',
+  '#E04040', '#FCB314', '#C57A3A', '#0568A0', '#2ECC71',
+  '#E74C3C', '#3498DB', '#F39C12', '#1ABC9C', '#8E44AD',
+  '#D35400', '#16A085', '#2980B9', '#C0392B', '#27AE60',
+]
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(name: string): string {
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (parts[0]?.[0] || '?').toUpperCase();
+}
+
+// === REP AVATAR COMPONENT ===
+function RepAvatar({ name, size = 'md', onClick }: { name: string; size?: 'sm' | 'md' | 'lg' | 'xl'; onClick?: (e: React.MouseEvent) => void }) {
+  const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const avatarUrl = getRepAvatarUrl(name);
+  const initials = getInitials(name);
+  const color = getAvatarColor(name);
+  const sizeClass = size === 'sm' ? 'rep-avatar--sm' : size === 'lg' ? 'rep-avatar--lg' : size === 'xl' ? 'rep-avatar--xl' : '';
+
+  return (
+    <div className={`rep-avatar ${sizeClass}`} onClick={onClick} style={{ cursor: onClick ? 'pointer' : undefined }}>
+      {!imgError ? (
+        <img
+          src={avatarUrl}
+          alt={name}
+          onError={() => setImgError(true)}
+          onLoad={() => setImgLoaded(true)}
+          style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+        />
+      ) : null}
+      {(imgError || !imgLoaded) && (
+        <div className="rep-avatar__initials" style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)`, position: imgError ? 'relative' : 'absolute', top: 0, left: 0 }}>
+          {initials}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// === REP SCORECARD MODAL ===
+function RepScorecardModal({ repName, repStats, onClose }: { repName: string; repStats: any; onClose: () => void }) {
+  const formattedName = repName.toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
+  const personalBests = useMemo(() => getRepPersonalBests(records, repName), [repName]);
+  const conversions = useMemo(() => getRepConversions(records, repName), [repName]);
+  const repTrend = useMemo(() => getTrendData(records.filter(r => r.rep === repName), 'month'), [repName]);
+  const allTimeStats = useMemo(() => {
+    const repData = records.filter(r => r.rep === repName);
+    return aggregateRepStats(repData)[0];
+  }, [repName]);
+
+  // Close on escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  if (!allTimeStats) return null;
+
+  return (
+    <div className="scorecard-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="scorecard-modal">
+        {/* Header */}
+        <div className="scorecard-header">
+          <button className="scorecard-close" onClick={onClose}>
+            <X size={16} />
+          </button>
+          <div className="flex justify-center mb-3">
+            <RepAvatar name={repName} size="xl" />
+          </div>
+          <div className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{formattedName}</div>
+          <div className="flex items-center justify-center gap-2 mt-1">
+            {allTimeStats.office !== 'Unassigned' && (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md" style={{ background: 'var(--color-surface-lighter)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+                {allTimeStats.office}
+              </span>
+            )}
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md" style={{ background: 'rgba(0, 159, 219, 0.1)', color: '#067AB4' }}>
+              Rank #{repStats?.rank || allTimeStats.rank}
+            </span>
+          </div>
+          <div className="text-3xl font-extrabold mt-3" style={{ color: '#009FDB' }}>
+            {formatNumber(repStats?.total || allTimeStats.total)}
+            <span className="text-sm font-semibold ml-1" style={{ color: 'var(--color-text-muted)' }}>total sales</span>
+          </div>
+        </div>
+
+        <div className="scorecard-body">
+          {/* Personal Bests */}
+          <div className="scorecard-section">
+            <div className="scorecard-section__title"><Star size={12} /> Personal Bests</div>
+            <div className="best-cards">
+              <div className="best-card">
+                <div className="best-card__label">Best Day</div>
+                <div className="best-card__value">{formatNumber(personalBests.bestDay.total)}</div>
+                <div className="best-card__detail">{personalBests.bestDay.date !== '—' ? personalBests.bestDay.date : '—'}</div>
+              </div>
+              <div className="best-card">
+                <div className="best-card__label">Best Week</div>
+                <div className="best-card__value">{formatNumber(personalBests.bestWeek.total)}</div>
+                <div className="best-card__detail">{personalBests.bestWeek.week !== '—' ? personalBests.bestWeek.week : '—'}</div>
+              </div>
+              <div className="best-card">
+                <div className="best-card__label">Best Month</div>
+                <div className="best-card__value">{formatNumber(personalBests.bestMonth.total)}</div>
+                <div className="best-card__detail">{personalBests.bestMonth.month}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Conversion Rates */}
+          <div className="scorecard-section">
+            <div className="scorecard-section__title"><Zap size={12} /> Conversion Rates</div>
+            <div className="conversion-row">
+              <div className="conversion-label">Fiber + DTV</div>
+              <div className="conversion-bar">
+                <div className="conversion-bar__fill" style={{ width: `${Math.min(conversions.dtvFiberPct, 100)}%`, background: 'linear-gradient(90deg, #FF720088, #FF7200)' }} />
+              </div>
+              <div className="conversion-value" style={{ color: '#FF7200' }}>{formatPct(conversions.dtvFiberPct)}</div>
+            </div>
+            <div className="conversion-row">
+              <div className="conversion-label">Fiber + Lines</div>
+              <div className="conversion-bar">
+                <div className="conversion-bar__fill" style={{ width: `${Math.min(conversions.linesFiberPct, 100)}%`, background: 'linear-gradient(90deg, #39B54A88, #39B54A)' }} />
+              </div>
+              <div className="conversion-value" style={{ color: '#39B54A' }}>{formatPct(conversions.linesFiberPct)}</div>
+            </div>
+          </div>
+
+          {/* Product Breakdown */}
+          <div className="scorecard-section">
+            <div className="scorecard-section__title"><BarChart3 size={12} /> Product Breakdown</div>
+            <div className="scorecard-stats">
+              <div className="scorecard-stat">
+                <div className="scorecard-stat__icon" style={{ background: 'rgba(0, 159, 219, 0.1)' }}>
+                  <FiberIcon size={18} color="#009FDB" />
+                </div>
+                <div>
+                  <div className="scorecard-stat__value">{formatNumber(conversions.totalFiber)}</div>
+                  <div className="scorecard-stat__label">Fiber</div>
+                </div>
+              </div>
+              <div className="scorecard-stat">
+                <div className="scorecard-stat__icon" style={{ background: 'rgba(255, 114, 0, 0.1)' }}>
+                  <DTVIcon size={18} color="#FF7200" />
+                </div>
+                <div>
+                  <div className="scorecard-stat__value">{formatNumber(conversions.totalDtv)}</div>
+                  <div className="scorecard-stat__label">DTV</div>
+                </div>
+              </div>
+              <div className="scorecard-stat">
+                <div className="scorecard-stat__icon" style={{ background: 'rgba(57, 181, 74, 0.1)' }}>
+                  <WirelessIcon size={18} color="#39B54A" />
+                </div>
+                <div>
+                  <div className="scorecard-stat__value">{formatNumber(conversions.totalLines)}</div>
+                  <div className="scorecard-stat__label">Lines</div>
+                </div>
+              </div>
+              <div className="scorecard-stat">
+                <div className="scorecard-stat__icon" style={{ background: 'rgba(155, 89, 182, 0.1)' }}>
+                  <ADTIcon size={18} color="#9B59B6" />
+                </div>
+                <div>
+                  <div className="scorecard-stat__value">{formatNumber(conversions.totalAdt)}</div>
+                  <div className="scorecard-stat__label">ADT</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Trend Over Time */}
+          {repTrend.length > 1 && (
+            <div className="scorecard-section">
+              <div className="scorecard-section__title"><TrendingUp size={12} /> Production Trend</div>
+              <div style={{ width: '100%', height: 160 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={repTrend} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+                    <defs>
+                      <linearGradient id="scGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#009FDB" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#009FDB" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e6ec" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#8d95a5' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#8d95a5' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="total" name="Total" stroke="#009FDB" strokeWidth={2.5} fill="url(#scGrad)" dot={false} activeDot={{ r: 4, fill: '#009FDB', stroke: '#fff', strokeWidth: 2 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Activity */}
+          <div className="scorecard-section">
+            <div className="scorecard-section__title"><Calendar size={12} /> Activity</div>
+            <div className="flex gap-3">
+              <div className="flex-1 text-center p-3 rounded-xl" style={{ background: 'var(--color-surface-lighter)', border: '1px solid var(--color-border)' }}>
+                <div className="text-xl font-extrabold" style={{ color: 'var(--color-text)' }}>{allTimeStats.activeDays}</div>
+                <div className="text-[10px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>Active Days</div>
+              </div>
+              {allTimeStats.lastSaleDate && (
+                <div className="flex-1 text-center p-3 rounded-xl" style={{ background: 'var(--color-surface-lighter)', border: '1px solid var(--color-border)' }}>
+                  <div className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>{allTimeStats.lastSaleDate}</div>
+                  <div className="text-[10px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>Last Sale</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// === AVATAR UPLOAD MODAL ===
+function AvatarUploadModal({ onClose }: { onClose: () => void }) {
+  const [selectedRep, setSelectedRep] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [repSearch, setRepSearch] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const allReps = useMemo(() => getReps(records), []);
+  const filteredRepList = useMemo(() => {
+    if (!repSearch) return allReps;
+    return allReps.filter(r => r.toLowerCase().includes(repSearch.toLowerCase()));
+  }, [allReps, repSearch]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+      setSuccess('');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file || !selectedRep) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('rep', selectedRep);
+      const res = await fetch('/api/upload-avatar', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(`Photo uploaded for ${selectedRep.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}`);
+        setFile(null);
+        setPreview(null);
+      } else {
+        alert(data.error || 'Upload failed');
+      }
+    } catch {
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div className="scorecard-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="upload-modal">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold" style={{ color: 'var(--color-text)' }}>Upload Rep Photo</h2>
+          <button className="scorecard-close" style={{ position: 'relative', top: 0, right: 0 }} onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Rep selector with search */}
+        <div className="mb-4">
+          <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--color-text-muted)' }}>Select Rep</label>
+          <input
+            type="text"
+            placeholder="Search reps..."
+            value={repSearch}
+            onChange={e => setRepSearch(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm font-medium mb-1.5"
+            style={{ background: 'var(--color-surface-lighter)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
+          />
+          <select
+            className="dropdown w-full"
+            value={selectedRep}
+            onChange={e => setSelectedRep(e.target.value)}
+          >
+            <option value="">Choose a rep...</option>
+            {filteredRepList.map(r => (
+              <option key={r} value={r}>{r.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* File upload */}
+        <div className="mb-4">
+          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="hidden" />
+          <div
+            className={`upload-dropzone ${file ? 'upload-dropzone--active' : ''}`}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {preview ? (
+              <div className="flex flex-col items-center gap-3">
+                <div className="rep-avatar rep-avatar--lg" style={{ border: '3px solid #009FDB' }}>
+                  <img src={preview} alt="Preview" />
+                </div>
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{file?.name}</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(0, 159, 219, 0.1)' }}>
+                  <Camera size={22} color="#009FDB" />
+                </div>
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Click to select photo</span>
+                <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>JPEG, PNG, or WebP · Max 2MB</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Upload button */}
+        <button
+          className="upload-btn w-full"
+          disabled={!file || !selectedRep || uploading}
+          onClick={handleUpload}
+        >
+          <Upload size={16} />
+          {uploading ? 'Uploading...' : 'Upload Photo'}
+        </button>
+
+        {success && (
+          <div className="upload-success mt-3">
+            <span style={{ fontSize: 16 }}>✓</span> {success}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // === TYPES & CONSTANTS ===
 type Tab = 'dashboard' | 'leaderboard' | 'trends' | 'compare'
 type TimeFrame = 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'YTD' | 'All'
@@ -210,6 +574,8 @@ function CustomTooltip({ active, payload, label }: any) {
 
 // === MAIN COMPONENT ===
 export default function Home() {
+  const [selectedRepForScorecard, setSelectedRepForScorecard] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [tab, setTab] = useState<Tab>('dashboard')
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('YTD')
   const [office, setOffice] = useState<string>('All')
@@ -299,16 +665,25 @@ export default function Home() {
     availableMonths, availableQuarters, availableWeeks, availableDates,
   }
 
+  const openScorecard = useCallback((repName: string) => {
+    setSelectedRepForScorecard(repName);
+  }, []);
+
+  const selectedRepStats = useMemo(() => {
+    if (!selectedRepForScorecard) return null;
+    return repStats.find((r: any) => r.rep === selectedRepForScorecard) || null;
+  }, [selectedRepForScorecard, repStats]);
+
   return (
     <>
-      <Header filterLabel={activeFilterLabel} office={office} />
+      <Header filterLabel={activeFilterLabel} office={office} onUploadClick={() => setShowUploadModal(true)} />
       
       <main className="content-pb">
         {tab === 'dashboard' && (
-          <DashboardView summary={summary} repStats={repStats} trendData={trendData} filterProps={filterProps} />
+          <DashboardView summary={summary} repStats={repStats} trendData={trendData} filterProps={filterProps} onRepClick={openScorecard} />
         )}
         {tab === 'leaderboard' && (
-          <LeaderboardView summary={summary} repStats={repStats} filterProps={filterProps} />
+          <LeaderboardView summary={summary} repStats={repStats} filterProps={filterProps} onRepClick={openScorecard} />
         )}
         {tab === 'trends' && (
           <TrendsView trendData={trendData} filterProps={filterProps} />
@@ -319,12 +694,26 @@ export default function Home() {
       </main>
 
       <TabBar tab={tab} setTab={setTab} />
+
+      {/* Scorecard Modal */}
+      {selectedRepForScorecard && (
+        <RepScorecardModal
+          repName={selectedRepForScorecard}
+          repStats={selectedRepStats}
+          onClose={() => setSelectedRepForScorecard(null)}
+        />
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <AvatarUploadModal onClose={() => setShowUploadModal(false)} />
+      )}
     </>
   )
 }
 
 // === HEADER ===
-function Header({ filterLabel, office }: { filterLabel: string; office: string }) {
+function Header({ filterLabel, office, onUploadClick }: { filterLabel: string; office: string; onUploadClick: () => void }) {
   return (
     <header className="app-header">
       <div className="flex items-center gap-3">
@@ -339,11 +728,21 @@ function Header({ filterLabel, office }: { filterLabel: string; office: string }
           </div>
         </div>
       </div>
-      <div className="hidden md:flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
-        <Calendar size={14} />
-        <span className="text-xs font-semibold">
-          {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-        </span>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onUploadClick}
+          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+          style={{ background: 'var(--color-surface-lighter)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}
+          title="Upload rep photos"
+        >
+          <Camera size={15} />
+        </button>
+        <div className="hidden md:flex items-center gap-2" style={{ color: 'var(--color-text-muted)' }}>
+          <Calendar size={14} />
+          <span className="text-xs font-semibold">
+            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </span>
+        </div>
       </div>
     </header>
   )
@@ -490,7 +889,7 @@ function FilterBar({ filterProps, showSort = true }: { filterProps: FilterProps;
 }
 
 // === DASHBOARD VIEW (MAJOR REDESIGN) ===
-function DashboardView({ summary, repStats, trendData, filterProps }: { summary: any; repStats: any; trendData: any; filterProps: FilterProps }) {
+function DashboardView({ summary, repStats, trendData, filterProps, onRepClick }: { summary: any; repStats: any; trendData: any; filterProps: FilterProps; onRepClick: (name: string) => void }) {
   // Product mix data for donut chart
   const productMix = [
     { name: 'Fiber', value: summary.teamFiber, color: PRODUCT_COLORS.fiber },
@@ -621,7 +1020,7 @@ function DashboardView({ summary, repStats, trendData, filterProps }: { summary:
       <h2 className="section-header text-sm font-bold uppercase tracking-wider mt-6 mb-3" style={{ color: 'var(--color-text-muted)' }}>Top 10 Performers</h2>
       <div className="space-y-1">
         {repStats.slice(0, 10).map((rep: any, i: number) => (
-          <LeaderboardRow key={rep.rep} rep={rep} compact style={{ animationDelay: `${i * 0.04}s` }} />
+          <LeaderboardRow key={rep.rep} rep={rep} compact style={{ animationDelay: `${i * 0.04}s` }} onRepClick={onRepClick} />
         ))}
       </div>
     </div>
@@ -653,7 +1052,7 @@ function ProductCard({ icon: Icon, label, value, color, total }: { icon: any; la
 }
 
 // === LEADERBOARD VIEW ===
-function LeaderboardView({ summary, repStats, filterProps }: { summary: any; repStats: any; filterProps: FilterProps }) {
+function LeaderboardView({ summary, repStats, filterProps, onRepClick }: { summary: any; repStats: any; filterProps: FilterProps; onRepClick: (name: string) => void }) {
   const [search, setSearch] = useState('')
   
   const filteredReps = useMemo(() => {
@@ -671,9 +1070,9 @@ function LeaderboardView({ summary, repStats, filterProps }: { summary: any; rep
       {/* Top 3 Podium */}
       {top3.length === 3 && !search && (
         <div className="grid grid-cols-3 gap-2 md:gap-4 mt-4 mb-6">
-          <PodiumCard rep={top3[1]} place={2} />
-          <PodiumCard rep={top3[0]} place={1} />
-          <PodiumCard rep={top3[2]} place={3} />
+          <PodiumCard rep={top3[1]} place={2} onRepClick={onRepClick} />
+          <PodiumCard rep={top3[0]} place={1} onRepClick={onRepClick} />
+          <PodiumCard rep={top3[2]} place={3} onRepClick={onRepClick} />
         </div>
       )}
 
@@ -706,10 +1105,10 @@ function LeaderboardView({ summary, repStats, filterProps }: { summary: any; rep
       {/* Full leaderboard */}
       <div className="space-y-1">
         {search && top3.length > 0 && top3.map((rep: any, i: number) => (
-          <LeaderboardRow key={rep.rep} rep={rep} style={{ animationDelay: `${i * 0.04}s` }} />
+          <LeaderboardRow key={rep.rep} rep={rep} style={{ animationDelay: `${i * 0.04}s` }} onRepClick={onRepClick} />
         ))}
         {!search && top3.length > 0 && rest.map((rep: any, i: number) => (
-          <LeaderboardRow key={rep.rep} rep={rep} style={{ animationDelay: `${i * 0.03}s` }} />
+          <LeaderboardRow key={rep.rep} rep={rep} style={{ animationDelay: `${i * 0.03}s` }} onRepClick={onRepClick} />
         ))}
         {search && filteredReps.length === 0 && (
           <div className="text-center py-12" style={{ color: 'var(--color-text-muted)' }}>
@@ -723,24 +1122,26 @@ function LeaderboardView({ summary, repStats, filterProps }: { summary: any; rep
 }
 
 // === PODIUM CARD ===
-function PodiumCard({ rep, place }: { rep: any; place: number }) {
+function PodiumCard({ rep, place, onRepClick }: { rep: any; place: number; onRepClick: (name: string) => void }) {
   const config = {
-    1: { color: '#FCB314', bg: 'rgba(252, 179, 20, 0.06)', borderColor: '#FCB314', renderIcon: () => <CrownIcon size={24} color="#FCB314" /> },
-    2: { color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.06)', borderColor: '#94A3B8', renderIcon: () => <MedalIcon size={24} color="#94A3B8" /> },
-    3: { color: '#C57A3A', bg: 'rgba(197, 122, 58, 0.06)', borderColor: '#C57A3A', renderIcon: () => <MedalIcon size={24} color="#C57A3A" /> },
+    1: { color: '#FCB314', bg: 'rgba(252, 179, 20, 0.06)', borderColor: '#FCB314' },
+    2: { color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.06)', borderColor: '#94A3B8' },
+    3: { color: '#C57A3A', bg: 'rgba(197, 122, 58, 0.06)', borderColor: '#C57A3A' },
   }[place] as any
 
   const formattedName = rep.rep.toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
 
   return (
-    <div className="stat-card podium-card text-center" style={{ background: config.bg, borderColor: config.borderColor + '33', borderTop: `3px solid ${config.borderColor}` }}>
+    <div className="stat-card podium-card text-center" style={{ background: config.bg, borderColor: config.borderColor + '33', borderTop: `3px solid ${config.borderColor}`, cursor: 'pointer' }} onClick={() => onRepClick(rep.rep)}>
       <div className="flex justify-center mb-2">
-        <div className="w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center" style={{ background: config.color + '18' }}>
-          {config.renderIcon()}
+        <div style={{ position: 'relative' }}>
+          <RepAvatar name={rep.rep} size="lg" />
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: config.color, color: place === 3 ? '#fff' : '#1a1a1a', border: '2px solid #fff', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }}>
+            {place}
+          </div>
         </div>
       </div>
-      <div className="text-xs font-bold mb-0.5" style={{ color: config.color }}>#{place}</div>
-      <div className="text-xs md:text-sm font-bold truncate" style={{ color: 'var(--color-text)' }}>{formattedName}</div>
+      <div className="text-xs md:text-sm font-bold truncate mt-1" style={{ color: 'var(--color-text)' }}>{formattedName}</div>
       <div className="text-lg md:text-xl font-extrabold mt-1" style={{ color: config.color }}>
         <AnimatedNumber value={rep.total} />
       </div>
@@ -754,17 +1155,26 @@ function PodiumCard({ rep, place }: { rep: any; place: number }) {
 }
 
 // === LEADERBOARD ROW ===
-function LeaderboardRow({ rep, compact = false, style = {} }: { rep: any; compact?: boolean; style?: React.CSSProperties }) {
+function LeaderboardRow({ rep, compact = false, style = {}, onRepClick }: { rep: any; compact?: boolean; style?: React.CSSProperties; onRepClick?: (name: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   const formattedName = rep.rep.toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
 
+  const handleClick = () => {
+    if (onRepClick) {
+      onRepClick(rep.rep);
+    } else {
+      setExpanded(!expanded);
+    }
+  };
+
   return (
     <>
-      <div className="lb-row" onClick={() => setExpanded(!expanded)} style={style}>
+      <div className="lb-row" onClick={handleClick} style={style}>
         <div className={`rank-badge rank-badge--${rep.rank <= 3 ? rep.rank : 'normal'}`}>
           {rep.rank}
         </div>
-        <div className="ml-3 flex-1 min-w-0">
+        <RepAvatar name={rep.rep} size={compact ? 'sm' : 'md'} />
+        <div className="ml-2 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{formattedName}</span>
             {!compact && rep.office !== 'Unassigned' && (
